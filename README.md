@@ -67,8 +67,8 @@ poetry install
 cp .env.example .env
 
 # Get your Gemini API key from https://aistudio.google.com/
-GEMINI_API_KEY='your-gemini-api-key-here'
-GEMINI_MODEL='gemini-1.5-flash'
+export GEMINI_API_KEY='your-gemini-api-key-here'
+export GEMINI_MODEL='gemini-1.5-flash'
 ```
 
 ## Usage
