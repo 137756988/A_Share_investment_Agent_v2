@@ -325,7 +325,7 @@ class Backtester:
             if df is None or df.empty:
                 continue
 
-            current_price = df.iloc[-1]['close']
+            current_price = df.iloc[-1]['open']
             executed_quantity = self.execute_trade(
                 action, quantity, current_price)
 
