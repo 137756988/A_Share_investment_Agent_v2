@@ -44,8 +44,8 @@
 Clone the repository:
 
 ```bash
-git clone https://github.com/24mlight/A_Share_investent_Agent.git
-cd A_Share_investent_Agent
+git clone https://github.com/24mlight/A_Share_investment_Agent.git
+cd A_Share_investment_Agent
 ```
 
 1. Install Poetry (if not already installed):
