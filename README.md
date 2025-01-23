@@ -1,5 +1,6 @@
 # AI 投资系统
-这个系统目前是只支持A股的哈。
+
+这个系统目前是只支持 A 股的哈。
 
 这是一个基于人工智能的投资系统概念验证项目。项目目标是探索如何使用 AI 来辅助投资决策。本项目仅用于**教育目的**，不适用于实际交易或投资。
 
@@ -48,7 +49,15 @@ git clone https://github.com/24mlight/A_Share_investment_Agent.git
 cd A_Share_investment_Agent
 ```
 
-1. Install Poetry (if not already installed):
+1. Install Poetry:
+
+# Windows (PowerShell)
+
+```powershell
+(Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
+```
+
+# Unix/macOS
 
 ```bash
 curl -sSL https://install.python-poetry.org | python3 -
@@ -67,9 +76,35 @@ poetry install
 cp .env.example .env
 
 # Get your Gemini API key from https://aistudio.google.com/
+```
+
+你可以通过以下两种方式设置环境变量:
+
+1. **直接修改 .env 文件**
+   打开 .env 文件,填入你的 API key:
+
+```
+GEMINI_API_KEY=your-gemini-api-key-here
+GEMINI_MODEL=gemini-1.5-flash
+```
+
+2. **通过命令行设置**
+
+Unix/macOS:
+
+```bash
 export GEMINI_API_KEY='your-gemini-api-key-here'
 export GEMINI_MODEL='gemini-1.5-flash'
 ```
+
+Windows PowerShell:
+
+```powershell
+$env:GEMINI_API_KEY='your-gemini-api-key-here'
+$env:GEMINI_MODEL='gemini-1.5-flash'
+```
+
+注意: 推荐使用第一种方式(修改 .env 文件)。
 
 ## Usage
 

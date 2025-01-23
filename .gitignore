@@ -44,3 +44,8 @@ Thumbs.db
 node_modules/
 dist/
 .DS_Store 
+
+# New additions
+.venv/
+venv/
+ENV/ 
