@@ -316,6 +316,14 @@ ai-hedge-fund/
 
 本项目修改自 [ai-hedge-fund](https://github.com/virattt/ai-hedge-fund.git)。我们衷心感谢原作者的出色工作和启发。原项目为我们针对 A 股市场的适配和改进提供了坚实的基础。
 
+---
+
+## ☕️ 请作者喝杯咖啡
+
+如果这个项目对你有帮助，欢迎请我喝杯咖啡 ❤️
+
+<img src="src/data/img/ali.png" alt="支付宝收款码" width="300"/>
+
 ## 项目详细说明
 
 ### 架构设计
