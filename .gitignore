@@ -24,6 +24,7 @@ wheels/
 # Virtual Environment
 venv/
 ENV/
+.venv/
 
 # Environment Variables
 .env
@@ -49,3 +50,6 @@ dist/
 .venv/
 venv/
 ENV/ 
+
+# Reference directory
+reference/ 
