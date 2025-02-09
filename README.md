@@ -312,7 +312,7 @@ ai-hedge-fund/
 
 <img src="src/data/img/ali.png" alt="支付宝收款码" width="300"/>
 
-同时也欢迎关注我们的公众号【空指针指向了量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！ 🚀
+同时也欢迎关注我们的公众号【空指针指向量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！ 🚀
 
 <img src="src/data/img/gzh_code.jpg" alt="公众号二维码" width="300"/>
 
