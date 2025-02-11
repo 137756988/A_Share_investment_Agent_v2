@@ -312,11 +312,11 @@ ai-hedge-fund/
 ### 🌟 加入我们的社区
 =======
 同时也欢迎关注我们的公众号【空指针指向量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！ 🚀
->>>>>>> 6dbc1853dbb53d2d2da4ed262fb53c95ab9a70c8
 
 <div style="display: flex; justify-content: space-between;">
     <div style="text-align: center; margin-right: 20px;">
-        <p>关注公众号【空指针指向了量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！现在关注即可领取 <b>¥20</b> 知识星球优惠券！🎁</p>
+        <p>关注公众号【空指针指向了量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！
+        现在关注即可领取 <b>¥20</b> 知识星球优惠券！🎁</p>
         <img src="src/data/img/gzh_code.jpg" alt="公众号二维码" width="300"/>
     </div>
 </div>
