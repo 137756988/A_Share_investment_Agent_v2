@@ -30,8 +30,6 @@
 
 使用本软件即表示您同意仅将其用于学习目的。
 
-
-
 ## Setup
 
 Clone the repository:
@@ -304,19 +302,28 @@ ai-hedge-fund/
 
 本项目基于 MIT 许可证 - 详见 LICENSE 文件。
 
-
-
 ## ☕️ 请作者喝杯咖啡
 
 如果这个项目对你有帮助，欢迎请我喝杯咖啡 ❤️
 
 <img src="src/data/img/ali.png" alt="支付宝收款码" width="300"/>
 
-同时也欢迎关注我们的公众号【空指针指向了量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！ 🚀
+### 🌟 加入我们的社区
 
-<img src="src/data/img/gzh_code.jpg" alt="公众号二维码" width="300"/>
+<div style="display: flex; justify-content: space-between;">
+    <div style="text-align: center; margin-right: 20px;">
+        <p>关注公众号【空指针指向了量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！现在关注即可领取 <b>¥20</b> 知识星球优惠券！🎁</p>
+        <img src="src/data/img/gzh_code.jpg" alt="公众号二维码" width="300"/>
+    </div>
+</div>
 
-让我们一起探索 AI 量化投资的无限可能！ 💪
+<div style="text-align: center;">
+        <p>欢迎加入我们的知识星球！这里不仅有更多深度干货，还有：<br/>
+        🔥 独家策略、资料分享<br/>
+        👥 量化投资交流<br/>
+        💡 一对一答疑解惑</p>
+        <img src="src/data/img/planet.jpg" alt="知识星球二维码" width="300"/>
+</div>
 
 ## 项目详细说明
 

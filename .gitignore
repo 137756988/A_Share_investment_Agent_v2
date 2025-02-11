@@ -53,3 +53,6 @@ ENV/
 
 # Reference directory
 reference/ 
+
+# Documentation
+docs/ 
