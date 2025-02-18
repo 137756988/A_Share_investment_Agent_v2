@@ -334,6 +334,7 @@ ai-hedge-fund/
         💡 一对一答疑解惑</p>
         <img src="src/data/img/planet.jpg" alt="知识星球二维码" width="300"/>
 </div>
+❗❗ 为防止苹果收取手续费，苹果用户请添加我的QQ加入星球，QQ: 2262532773
 
 ## 项目详细说明
 
