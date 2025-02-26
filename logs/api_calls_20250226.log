@@ -1,0 +1,76 @@
+2025-02-26 17:29:13,667 - api_calls - DEBUG - Logger initialization completed
+2025-02-26 17:29:13,667 - api_calls - INFO - API logging system started
+2025-02-26 17:29:13,669 - api_calls - INFO - ✓ 已加载环境变量: E:\github\A_Share_investment_Agent\.env
+2025-02-26 17:29:13,670 - api_calls - INFO - ✓ Gemini 客户端初始化成功
+2025-02-26 17:29:20,469 - api_calls - INFO - ⟳ 使用模型: gemini-1.5-flash
+2025-02-26 17:29:20,470 - api_calls - DEBUG - 消息内容: [{'role': 'system', 'content': 'You are a portfolio manager making final trading decisions.\n            Your job is to make a trading decision based on the team\'s analysis while strictly adhering\n            to risk management constraints.\n\n            RISK MANAGEMENT CONSTRAINTS:\n            - You MUST NOT exceed the max_position_size specified by the risk manager\n            - You MUST follow the trading_action (buy/sell/hold) recommended by risk management\n            - These are hard constraints that cannot be overridden by other signals\n\n            When weighing the different signals for direction and timing:\n            1. Valuation Analysis (35% weight)\n               - Primary driver of fair value assessment\n               - Determines if price offers good entry/exit point\n            \n            2. Fundamental Analysis (30% weight)\n               - Business quality and growth assessment\n               - Determines conviction in long-term potential\n            \n            3. Technical Analysis (25% weight)\n               - Secondary confirmation\n               - Helps with entry/exit timing\n            \n            4. Sentiment Analysis (10% weight)\n               - Final consideration\n               - Can influence sizing within risk limits\n            \n            The decision process should be:\n            1. First check risk management constraints\n            2. Then evaluate valuation signal\n            3. Then evaluate fundamentals signal\n            4. Use technical analysis for timing\n            5. Consider sentiment for final adjustment\n            \n            Provide the following in your output:\n            - "action": "buy" | "sell" | "hold",\n            - "quantity": <positive integer>\n            - "confidence": <float between 0 and 1>\n            - "agent_signals": <list of agent signals including agent name, signal (bullish | bearish | neutral), and their confidence>\n            - "reasoning": <concise explanation of the decision including how you weighted the signals>\n\n            Trading Rules:\n            - Never exceed risk management position limits\n            - Only buy if you have available cash\n            - Only sell if you have shares to sell\n            - Quantity must be ≤ current position for sells\n            - Quantity must be ≤ max_position_size from risk management'}, {'role': 'user', 'content': 'Based on the team\'s analysis below, make your trading decision.\n\n            Technical Analysis Trading Signal: {"signal": "neutral", "confidence": "16%", "strategy_signals": {"trend_following": {"signal": "bearish", "confidence": "22%", "metrics": {"adx": 22.298794178180316, "trend_strength": 0.22298794178180315}}, "mean_reversion": {"signal": "neutral", "confidence": "50%", "metrics": {"z_score": -0.4855100478490236, "price_vs_bb": 0.7239629004255632, "rsi_14": 66.66666666666666, "rsi_28": 48.619631901840485}}, "momentum": {"signal": "neutral", "confidence": "50%", "metrics": {"momentum_1m": -0.00946706851258483, "momentum_3m": -0.18420698047678163, "momentum_6m": 0.19891302139644318, "volume_momentum": 1.4821702510619277}}, "volatility": {"signal": "neutral", "confidence": "50%", "metrics": {"historical_volatility": 0.7957367716477927, "volatility_regime": 1.0316610941850393, "volatility_z_score": 0.4202920948246745, "atr_ratio": 0.05868069607446377}}, "statistical_arbitrage": {"signal": "neutral", "confidence": "50%", "metrics": {"hurst_exponent": 5.260603357665294e-15, "skewness": -0.06524371696573751, "kurtosis": -0.09294397797006392}}}}\n            Fundamental Analysis Trading Signal: {"signal": "bearish", "confidence": "50%", "reasoning": {"profitability_signal": {"signal": "bearish", "details": "ROE: -62.96%, Net Margin: -52.54%, Op Margin: -52.38%"}, "growth_signal": {"signal": "bearish", "details": "Revenue Growth: -41.37%, Earnings Growth: nan%"}, "financial_health_signal": {"signal": "neutral", "details": "Current Ratio: 0.83, D/E: 0.69"}, "price_ratios_signal": {"signal": "neutral", "details": "P/E: -12.60, P/B: 10.58, P/S: 8.80"}}}\n            Sentiment Analysis Trading Signal: {"signal": "neutral", "confidence": "90%", "reasoning": "Based on 2 recent news articles, sentiment score: 0.10"}\n            Valuation Analysis Trading Signal: {"signal": "bearish", "confidence": "100%", "reasoning": {"dcf_analysis": {"signal": "bearish", "details": "Intrinsic Value: $0.00, Market Cap: $1,163,364,000.00, Gap: -100.0%"}, "owner_earnings_analysis": {"signal": "bearish", "details": "Owner Earnings Value: $0.00, Market Cap: $1,163,364,000.00, Gap: -100.0%"}}}\n            Risk Management Trading Signal: {"max_position_size": 12500.0, "risk_score": 6, "trading_action": "bearish", "risk_metrics": {"volatility": 0.6958739307767157, "value_at_risk_95": -0.08714918759231904, "max_drawdown": -0.5292642140468228, "market_risk_score": 4, "stress_test_results": {"market_crash": {"potential_loss": -0.0, "portfolio_impact": -0.0}, "moderate_decline": {"potential_loss": -0.0, "portfolio_impact": -0.0}, "slight_decline": {"potential_loss": -0.0, "portfolio_impact": -0.0}}}, "reasoning": "Risk Score 6/10: Market Risk=4, Volatility=69.59%, VaR=-8.71%, Max Drawdown=-52.93%"}\n\n            Here is the current portfolio:\n            Portfolio:\n            Cash: 100000.00\n            Current Position: 0 shares\n\n            Only include the action, quantity, reasoning, confidence, and agent_signals in your output as JSON.  Do not include any JSON markdown.\n\n            Remember, the action must be either buy, sell, or hold.\n            You can only buy if you have available cash.\n            You can only sell if you have shares in the portfolio to sell.'}]
+2025-02-26 17:29:20,472 - api_calls - INFO - ⟳ 正在调用 Gemini API...
+2025-02-26 17:29:20,473 - api_calls - INFO - 请求内容: User: Based on the team's analysis below, make your trading decision.
+
+            Technical Analysis Trading Signal: {"signal": "neutral", "confidence": "16%", "strategy_signals": {"trend_following": {"signal": "bearish", "confidence": "22%", "metrics": {"adx": 22.298794178180316, "trend_strength": 0.22298794178180315}}, "mean_reversion": {"signal": "neutral", "confidence": "50%", "metrics": {"z_score": -0.4855100478490236, "price_vs_bb": 0.7239629004255632, "rsi_14": 66.66666666666666, "rsi_28...
+2025-02-26 17:29:20,473 - api_calls - INFO - 请求配置: {'system_instruction': 'You are a portfolio manager making final trading decisions.\n            Your job is to make a trading decision based on the team\'s analysis while strictly adhering\n            to risk management constraints.\n\n            RISK MANAGEMENT CONSTRAINTS:\n            - You MUST NOT exceed the max_position_size specified by the risk manager\n            - You MUST follow the trading_action (buy/sell/hold) recommended by risk management\n            - These are hard constraints that cannot be overridden by other signals\n\n            When weighing the different signals for direction and timing:\n            1. Valuation Analysis (35% weight)\n               - Primary driver of fair value assessment\n               - Determines if price offers good entry/exit point\n            \n            2. Fundamental Analysis (30% weight)\n               - Business quality and growth assessment\n               - Determines conviction in long-term potential\n            \n            3. Technical Analysis (25% weight)\n               - Secondary confirmation\n               - Helps with entry/exit timing\n            \n            4. Sentiment Analysis (10% weight)\n               - Final consideration\n               - Can influence sizing within risk limits\n            \n            The decision process should be:\n            1. First check risk management constraints\n            2. Then evaluate valuation signal\n            3. Then evaluate fundamentals signal\n            4. Use technical analysis for timing\n            5. Consider sentiment for final adjustment\n            \n            Provide the following in your output:\n            - "action": "buy" | "sell" | "hold",\n            - "quantity": <positive integer>\n            - "confidence": <float between 0 and 1>\n            - "agent_signals": <list of agent signals including agent name, signal (bullish | bearish | neutral), and their confidence>\n            - "reasoning": <concise explanation of the decision including how you weighted the signals>\n\n            Trading Rules:\n            - Never exceed risk management position limits\n            - Only buy if you have available cash\n            - Only sell if you have shares to sell\n            - Quantity must be ≤ current position for sells\n            - Quantity must be ≤ max_position_size from risk management'}
+2025-02-26 17:29:23,829 - api_calls - INFO - ✓ API 调用成功
+2025-02-26 17:29:23,834 - api_calls - INFO - 响应内容: ```json
+{
+  "action": "hold",
+  "quantity": 0,
+  "confidence": 0.6,
+  "agent_signals": [
+    {
+      "agent": "Technical Analysis",
+      "signal": "neutral",
+      "confidence": 0.16
+    },
+    {
+      "agent": "Fundamental Analysis",
+      "signal": "bearish",
+      "confidence": 0.5
+    },
+    {
+      "agent": "Sentiment Analysis",
+      "signal": "neutral",
+      "confidence": 0.9
+    },
+    {
+      "agent": "Valuation Analysis",
+      "signal": "bearish",
+      "confidence": 1.0
+    },
+    ...
+2025-02-26 17:29:23,836 - api_calls - DEBUG - API 原始响应: ```json
+{
+  "action": "hold",
+  "quantity": 0,
+  "confidence": 0.6,
+  "agent_signals": [
+    {
+      "agent": "Technical Analysis",
+      "signal": "neutral",
+      "confidence": 0.16
+    },
+    {
+      "agent": "Fundamental Analysis",
+      "signal": "bearish",
+      "confidence": 0.5
+    },
+    {
+      "agent": "Sentiment Analysis",
+      "signal": "neutral",
+      "confidence": 0.9
+    },
+    {
+      "agent": "Valuation Analysis",
+      "signal": "bearish",
+      "confidence": 1.0
+    },
+    {
+      "agent": "Risk Management",
+      "signal": "bearish",
+      "confidence": 1.0
+    }
+  ],
+  "reasoning": "Risk Management dictates a bearish trading action. Valuation analysis (100% bearish confidence) and Fundamental Analysis (50% bearish confidence) strongly suggest a bearish outlook.  While Technical Analysis is neutral and Sentiment Analysis is also neutral, the strong bearish signals from Valuation and Fundamentals, weighted at 65% (35% + 30%), outweigh the other signals. Given the bearish risk management signal and the lack of a strong bullish signal, the decision is to hold."
+}
+```
+
+2025-02-26 17:29:23,836 - api_calls - INFO - ✓ 成功获取响应
