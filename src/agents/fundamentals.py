@@ -1,6 +1,6 @@
 from langchain_core.messages import HumanMessage
 
-from src.agents.state import AgentState, show_agent_reasoning
+from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
 
 import json
 
@@ -8,7 +8,8 @@ import json
 
 
 def fundamentals_agent(state: AgentState):
-    """Analyzes fundamental data and generates trading signals."""
+    """Responsible for fundamental analysis"""
+    show_workflow_status("Fundamentals Analyst")
     show_reasoning = state["metadata"]["show_reasoning"]
     data = state["data"]
     metrics = data["financial_metrics"][0]
@@ -163,7 +164,11 @@ def fundamentals_agent(state: AgentState):
     if show_reasoning:
         show_agent_reasoning(message_content, "Fundamental Analysis Agent")
 
+    show_workflow_status("Fundamentals Analyst", "completed")
     return {
         "messages": [message],
-        "data": data,
+        "data": {
+            **data,
+            "fundamental_analysis": message_content
+        }
     }

@@ -84,13 +84,11 @@ class Backtester:
         if current_time - self._api_window_start >= 60:
             self._api_call_count = 0
             self._api_window_start = current_time
-            self.logger.debug("API 调用计数已重置")
 
         # 如果达到 API 限制，等待新的时间窗口
         if self._api_call_count >= 8:  # 预留余量
             wait_time = 60 - (current_time - self._api_window_start)
             if wait_time > 0:
-                self.logger.info(f"已达到 API 限制，等待 {wait_time:.1f} 秒...")
                 time.sleep(wait_time)
                 self._api_call_count = 0
                 self._api_window_start = time.time()

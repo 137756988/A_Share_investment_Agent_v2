@@ -56,3 +56,20 @@ reference/
 
 # Documentation
 docs/ 
+structure.drawio
+
+# logs
+logs/
+
+# data
+src/data/stock_news/
+src/data/sentiment_cache.json
+
+# docs
+docs/
+
+# cache
+cache/
+
+# temp
+temp/

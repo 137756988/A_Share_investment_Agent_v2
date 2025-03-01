@@ -1,10 +1,11 @@
 from langchain_core.messages import HumanMessage
-from src.agents.state import AgentState, show_agent_reasoning
+from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
 import json
 
 
 def valuation_agent(state: AgentState):
-    """Performs detailed valuation analysis using multiple methodologies."""
+    """Responsible for valuation analysis"""
+    show_workflow_status("Valuation Agent")
     show_reasoning = state["metadata"]["show_reasoning"]
     data = state["data"]
     metrics = data["financial_metrics"][0]
@@ -75,9 +76,13 @@ def valuation_agent(state: AgentState):
     if show_reasoning:
         show_agent_reasoning(message_content, "Valuation Analysis Agent")
 
+    show_workflow_status("Valuation Agent", "completed")
     return {
         "messages": [message],
-        "data": data,
+        "data": {
+            **data,
+            "valuation_analysis": message_content
+        }
     }
 
 

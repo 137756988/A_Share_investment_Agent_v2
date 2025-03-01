@@ -1,57 +1,13 @@
 import os
 import time
-import logging
 from google import genai
 from dotenv import load_dotenv
 from dataclasses import dataclass
 import backoff
+from src.utils.logging_config import setup_logger, SUCCESS_ICON, ERROR_ICON, WAIT_ICON
 
 # 设置日志记录
-logger = logging.getLogger('api_calls')
-logger.setLevel(logging.DEBUG)
-
-# 移除所有现有的处理器
-for handler in logger.handlers[:]:
-    logger.removeHandler(handler)
-
-# 创建日志目录
-log_dir = os.path.join(os.path.dirname(os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__)))), 'logs')
-os.makedirs(log_dir, exist_ok=True)
-
-# 设置文件处理器
-log_file = os.path.join(log_dir, f'api_calls_{time.strftime("%Y%m%d")}.log')
-print(f"Creating log file at: {log_file}")
-
-try:
-    file_handler = logging.FileHandler(log_file, encoding='utf-8', mode='a')
-    file_handler.setLevel(logging.DEBUG)
-    print("Successfully created file handler")
-except Exception as e:
-    print(f"Error creating file handler: {str(e)}")
-
-# 设置控制台处理器
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-
-# 设置日志格式
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-
-# 添加处理器
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
-
-# 立即测试日志记录
-logger.debug("Logger initialization completed")
-logger.info("API logging system started")
-
-# 状态图标
-SUCCESS_ICON = "✓"
-ERROR_ICON = "✗"
-WAIT_ICON = "⟳"
+logger = setup_logger('api_calls')
 
 
 @dataclass
@@ -108,9 +64,8 @@ def generate_content_with_retry(model, contents, config=None):
     """带重试机制的内容生成函数"""
     try:
         logger.info(f"{WAIT_ICON} 正在调用 Gemini API...")
-        logger.info(f"请求内容: {contents[:500]}..." if len(
-            str(contents)) > 500 else f"请求内容: {contents}")
-        logger.info(f"请求配置: {config}")
+        logger.debug(f"请求内容: {contents}")
+        logger.debug(f"请求配置: {config}")
 
         response = client.models.generate_content(
             model=model,
@@ -119,8 +74,7 @@ def generate_content_with_retry(model, contents, config=None):
         )
 
         logger.info(f"{SUCCESS_ICON} API 调用成功")
-        logger.info(f"响应内容: {response.text[:500]}..." if len(
-            str(response.text)) > 500 else f"响应内容: {response.text}")
+        logger.debug(f"响应内容: {response.text[:500]}...")
         return response
     except Exception as e:
         if "AFC is enabled" in str(e):

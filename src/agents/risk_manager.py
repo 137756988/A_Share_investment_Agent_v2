@@ -2,7 +2,7 @@ import math
 
 from langchain_core.messages import HumanMessage
 
-from src.agents.state import AgentState, show_agent_reasoning
+from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
 from src.tools.api import prices_to_df
 
 import json
@@ -12,39 +12,22 @@ import ast
 
 
 def risk_management_agent(state: AgentState):
-    """Evaluates portfolio risk and sets position limits based on comprehensive risk analysis."""
+    """Responsible for risk management"""
+    show_workflow_status("Risk Manager")
     show_reasoning = state["metadata"]["show_reasoning"]
     portfolio = state["data"]["portfolio"]
     data = state["data"]
 
     prices_df = prices_to_df(data["prices"])
 
-    # Fetch messages from other agents
-    technical_message = next(
-        msg for msg in state["messages"] if msg.name == "technical_analyst_agent")
-    fundamentals_message = next(
-        msg for msg in state["messages"] if msg.name == "fundamentals_agent")
-    sentiment_message = next(
-        msg for msg in state["messages"] if msg.name == "sentiment_agent")
-    valuation_message = next(
-        msg for msg in state["messages"] if msg.name == "valuation_agent")
-    try:
-        fundamental_signals = json.loads(fundamentals_message.content)
-        technical_signals = json.loads(technical_message.content)
-        sentiment_signals = json.loads(sentiment_message.content)
-        valuation_signals = json.loads(valuation_message.content)
-    except Exception as e:
-        fundamental_signals = ast.literal_eval(fundamentals_message.content)
-        technical_signals = ast.literal_eval(technical_message.content)
-        sentiment_signals = ast.literal_eval(sentiment_message.content)
-        valuation_signals = ast.literal_eval(valuation_message.content)
+    # Fetch debate room message instead of individual analyst messages
+    debate_message = next(
+        msg for msg in state["messages"] if msg.name == "debate_room_agent")
 
-    agent_signals = {
-        "fundamental": fundamental_signals,
-        "technical": technical_signals,
-        "sentiment": sentiment_signals,
-        "valuation": valuation_signals
-    }
+    try:
+        debate_results = json.loads(debate_message.content)
+    except Exception as e:
+        debate_results = ast.literal_eval(debate_message.content)
 
     # 1. Calculate Risk Metrics
     returns = prices_df['close'].pct_change().dropna()
@@ -123,44 +106,37 @@ def risk_management_agent(state: AgentState):
             "portfolio_impact": portfolio_impact
         }
 
-    # 5. Risk-Adjusted Signals Analysis
-    # Convert all confidences to numeric for proper comparison
-    def parse_confidence(conf_str):
-        try:
-            if isinstance(conf_str, str):
-                return float(conf_str.replace('%', '')) / 100.0
-            return float(conf_str)
-        except:
-            return 0.0
+    # 5. Risk-Adjusted Signal Analysis
+    # Consider debate room confidence levels
+    bull_confidence = debate_results["bull_confidence"]
+    bear_confidence = debate_results["bear_confidence"]
+    debate_confidence = debate_results["confidence"]
 
-    low_confidence = any(parse_confidence(
-        signal['confidence']) < 0.30 for signal in agent_signals.values())
-
-    # Check the diversity of signals. If all three differ, add to risk score
-    # (signal divergence can be seen as increased uncertainty)
-    unique_signals = set(signal['signal'] for signal in agent_signals.values())
-    signal_divergence = (2 if len(unique_signals) == 3 else 0)
-
-    # Market risk contributes up to ~6 points total when doubled
-    risk_score = market_risk_score + (2 if low_confidence else 0)
-    risk_score += signal_divergence
+    # Add to risk score if confidence is low or debate was close
+    confidence_diff = abs(bull_confidence - bear_confidence)
+    if confidence_diff < 0.1:  # Close debate
+        market_risk_score += 1
+    if debate_confidence < 0.3:  # Low overall confidence
+        market_risk_score += 1
 
     # Cap risk score at 10
-    risk_score = min(round(risk_score), 10)
+    risk_score = min(round(market_risk_score), 10)
 
     # 6. Generate Trading Action
-    # If risk is very high, hold. If moderately high, consider reducing.
-    # Else, follow valuation signal as a baseline.
+    # Consider debate room signal along with risk assessment
+    debate_signal = debate_results["signal"]
+
     if risk_score >= 9:
         trading_action = "hold"
     elif risk_score >= 7:
         trading_action = "reduce"
     else:
-        # Consider both valuation and price drop signals
-        if agent_signals['technical']['signal'] == 'bullish' and parse_confidence(agent_signals['technical']['confidence']) > 0.5:
+        if debate_signal == "bullish" and debate_confidence > 0.5:
             trading_action = "buy"
+        elif debate_signal == "bearish" and debate_confidence > 0.5:
+            trading_action = "sell"
         else:
-            trading_action = agent_signals['valuation']['signal']
+            trading_action = "hold"
 
     message_content = {
         "max_position_size": float(max_position_size),
@@ -173,9 +149,15 @@ def risk_management_agent(state: AgentState):
             "market_risk_score": market_risk_score,
             "stress_test_results": stress_test_results
         },
+        "debate_analysis": {
+            "bull_confidence": bull_confidence,
+            "bear_confidence": bear_confidence,
+            "debate_confidence": debate_confidence,
+            "debate_signal": debate_signal
+        },
         "reasoning": f"Risk Score {risk_score}/10: Market Risk={market_risk_score}, "
                      f"Volatility={volatility:.2%}, VaR={var_95:.2%}, "
-                     f"Max Drawdown={max_drawdown:.2%}"
+                     f"Max Drawdown={max_drawdown:.2%}, Debate Signal={debate_signal}"
     }
 
     # Create the risk management message
@@ -187,7 +169,11 @@ def risk_management_agent(state: AgentState):
     if show_reasoning:
         show_agent_reasoning(message_content, "Risk Management Agent")
 
+    show_workflow_status("Risk Manager", "completed")
     return {
         "messages": state["messages"] + [message],
-        "data": data,
+        "data": {
+            **data,
+            "risk_analysis": message_content
         }
+    }

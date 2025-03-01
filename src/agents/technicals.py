@@ -3,7 +3,7 @@ from typing import Dict
 
 from langchain_core.messages import HumanMessage
 
-from src.agents.state import AgentState, show_agent_reasoning
+from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
 
 import json
 import pandas as pd
@@ -22,6 +22,7 @@ def technical_analyst_agent(state: AgentState):
     4. Volatility Analysis
     5. Statistical Arbitrage Signals
     """
+    show_workflow_status("Technical Analyst")
     show_reasoning = state["metadata"]["show_reasoning"]
     data = state["data"]
     prices = data["prices"]
@@ -213,6 +214,7 @@ def technical_analyst_agent(state: AgentState):
     if show_reasoning:
         show_agent_reasoning(analysis_report, "Technical Analyst")
 
+    show_workflow_status("Technical Analyst", "completed")
     return {
         "messages": [message],
         "data": data,

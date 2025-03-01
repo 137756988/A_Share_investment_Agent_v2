@@ -3,12 +3,13 @@ from langchain_core.prompts import ChatPromptTemplate
 from src.tools.openrouter_config import get_chat_completion
 import json
 
-from src.agents.state import AgentState, show_agent_reasoning
+from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
 
 
 ##### Portfolio Management Agent #####
 def portfolio_management_agent(state: AgentState):
-    """Makes final trading decisions and generates orders"""
+    """Responsible for portfolio management"""
+    show_workflow_status("Portfolio Manager")
     show_reasoning = state["metadata"]["show_reasoning"]
     portfolio = state["data"]["portfolio"]
 
@@ -147,10 +148,11 @@ def portfolio_management_agent(state: AgentState):
     if show_reasoning:
         show_agent_reasoning(message.content, "Portfolio Management Agent")
 
+    show_workflow_status("Portfolio Manager", "completed")
     return {
         "messages": state["messages"] + [message],
-        "data":state["data"],
-        }
+        "data": state["data"],
+    }
 
 
 def format_decision(action: str, quantity: int, confidence: float, agent_signals: list, reasoning: str) -> dict:

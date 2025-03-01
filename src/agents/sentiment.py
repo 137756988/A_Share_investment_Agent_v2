@@ -1,17 +1,21 @@
 from langchain_core.messages import HumanMessage
-from src.agents.state import AgentState, show_agent_reasoning
+from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
 from src.tools.news_crawler import get_stock_news, get_news_sentiment
+from src.utils.logging_config import setup_logger
 import json
 from datetime import datetime, timedelta
 
+# 设置日志记录
+logger = setup_logger('sentiment_agent')
+
 
 def sentiment_agent(state: AgentState):
-    """分析市场情绪并生成交易信号"""
-    print(f"----------state-----------: {state}")
+    """Responsible for sentiment analysis"""
+    show_workflow_status("Sentiment Analyst")
     show_reasoning = state["metadata"]["show_reasoning"]
     data = state["data"]
     symbol = data["ticker"]
-    print(f"----------symbol-----------: {symbol}")
+    logger.info(f"正在分析股票: {symbol}")
     # 从命令行参数获取新闻数量，默认为5条
     num_of_news = data.get("num_of_news", 5)
 
@@ -53,7 +57,11 @@ def sentiment_agent(state: AgentState):
         name="sentiment_agent",
     )
 
+    show_workflow_status("Sentiment Analyst", "completed")
     return {
         "messages": [message],
-        "data": data,
+        "data": {
+            **data,
+            "sentiment_analysis": sentiment_score
+        }
     }
