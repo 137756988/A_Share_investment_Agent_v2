@@ -22,8 +22,6 @@
 
 ## 系统架构
 
-### 最新架构 (V2)
-
 ![System Architecture V2](src/data/img/structure_v2.png)
 
 新版本的架构做出了以下改进：
@@ -44,21 +42,6 @@ poetry run python src/main.py --ticker 000000 #修改成你想要测试的股票
 poetry run python src/main.py --ticker 000000 --show-reasoning #修改成你想要测试的股票代码
 ```
 
-### 原始架构 (V1)
-
-```mermaid
-graph TD
-    MD[Market Data Agent] --> TA[Technical Analyst]
-    MD --> FA[Fundamentals Analyst]
-    MD --> SA[Sentiment Analyst]
-    MD --> VA[Valuation Analyst]
-    TA --> RM[Risk Manager]
-    FA --> RM
-    SA --> RM
-    VA --> RM
-    RM --> PM[Portfolio Manager]
-    PM --> Decision[Final Decision]
-```
 
 系统由以下几个协同工作的 agent 组成：
 
