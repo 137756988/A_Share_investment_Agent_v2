@@ -355,7 +355,6 @@ ai-hedge-fund/
 <div style="display: flex; justify-content: space-between;">
     <div style="text-align: center; margin-right: 20px;">
         <p>关注公众号【空指针指向了量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！
-        现在关注即可领取 <b>¥20</b> 知识星球优惠券！🎁</p>
         <img src="src/data/img/gzh_code.jpg" alt="公众号二维码" width="300"/>
     </div>
 </div>
@@ -367,6 +366,7 @@ ai-hedge-fund/
         💡 一对一答疑解惑</p>
         <img src="src/data/img/planet.jpg" alt="知识星球二维码" width="300"/>
 </div>
+> 注意不要扫码加入，请添加最开始提到的微信。
 
 ## 项目详细说明
 
