@@ -1,3 +1,12 @@
+本项目修改自ai-hedge-fund，对美股感兴趣的朋友可以自己去看。
+我修改后的美股版本现已设置为私有，以后也不再开源。
+
+本项目不需要任何费用，星球是我个人社区，可以付费加入交个朋友。
+
+请知悉。
+---
+
+
 # AI 投资系统
 
 > > 加入我的知识星球（一顿饭钱：99¥）
@@ -12,8 +21,6 @@
 这是一个基于人工智能的投资系统概念验证项目。项目目标是探索如何使用 AI 来辅助投资决策。本项目仅用于**教育目的**，不适用于实际交易或投资。
 
 ## 系统架构
-
-### 最新架构 (V2)
 
 ![System Architecture V2](src/data/img/structure_v2.png)
 
@@ -35,21 +42,6 @@ poetry run python src/main.py --ticker 000000 #修改成你想要测试的股票
 poetry run python src/main.py --ticker 000000 --show-reasoning #修改成你想要测试的股票代码
 ```
 
-### 原始架构 (V1)
-
-```mermaid
-graph TD
-    MD[Market Data Agent] --> TA[Technical Analyst]
-    MD --> FA[Fundamentals Analyst]
-    MD --> SA[Sentiment Analyst]
-    MD --> VA[Valuation Analyst]
-    TA --> RM[Risk Manager]
-    FA --> RM
-    SA --> RM
-    VA --> RM
-    RM --> PM[Portfolio Manager]
-    PM --> Decision[Final Decision]
-```
 
 系统由以下几个协同工作的 agent 组成：
 
@@ -363,7 +355,6 @@ ai-hedge-fund/
 <div style="display: flex; justify-content: space-between;">
     <div style="text-align: center; margin-right: 20px;">
         <p>关注公众号【空指针指向了量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！
-        现在关注即可领取 <b>¥20</b> 知识星球优惠券！🎁</p>
         <img src="src/data/img/gzh_code.jpg" alt="公众号二维码" width="300"/>
     </div>
 </div>
@@ -375,6 +366,7 @@ ai-hedge-fund/
         💡 一对一答疑解惑</p>
         <img src="src/data/img/planet.jpg" alt="知识星球二维码" width="300"/>
 </div>
+> 注意不要扫码加入，请添加最开始提到的微信。
 
 ## 项目详细说明
 

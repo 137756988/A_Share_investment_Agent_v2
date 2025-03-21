@@ -77,12 +77,16 @@ def generate_content_with_retry(model, contents, config=None):
         logger.debug(f"响应内容: {response.text[:500]}...")
         return response
     except Exception as e:
-        if "AFC is enabled" in str(e):
-            logger.warning(f"{ERROR_ICON} 触发 API 限制，等待重试... 错误: {str(e)}")
+        error_msg = str(e)
+        if "location" in error_msg.lower():
+            # 使用红色感叹号和红色文字提示
+            logger.info(f"\033[91m❗ Gemini API 地理位置限制错误: 请使用美国节点VPN后重试\033[0m")
+            logger.error(f"详细错误: {error_msg}")
+        elif "AFC is enabled" in error_msg:
+            logger.warning(f"{ERROR_ICON} 触发 API 限制，等待重试... 错误: {error_msg}")
             time.sleep(5)
-            raise e
-        logger.error(f"{ERROR_ICON} API 调用失败: {str(e)}")
-        logger.error(f"错误详情: {str(e)}")
+        else:
+            logger.error(f"{ERROR_ICON} API 调用失败: {error_msg}")
         raise e
 
 
