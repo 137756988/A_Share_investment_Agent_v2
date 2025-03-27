@@ -333,7 +333,8 @@ ai-hedge-fund/
 │   │   ├── sentiment.py         # Sentiment Agent
 │   │   ├── state.py            # Agent状态管理
 │   │   ├── technicals.py       # Technical Analyst
-│   │   └── valuation.py        # Valuation Agent
+│   │   ├── valuation.py        # Valuation Agent
+│   │   └── debate_room.py       # Debate Room Agent
 │   ├── data/                   # 数据存储目录
 │   │   ├── sentiment_cache.json # 情绪分析缓存
 │   │   └── stock_news/         # 股票新闻数据
