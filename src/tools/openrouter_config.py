@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from dataclasses import dataclass
 import backoff
 from src.utils.logging_config import setup_logger, SUCCESS_ICON, ERROR_ICON, WAIT_ICON
+from src.utils.llm_clients import LLMClientFactory
 
 # 设置日志记录
 logger = setup_logger('api_calls')
@@ -90,73 +91,38 @@ def generate_content_with_retry(model, contents, config=None):
         raise e
 
 
-def get_chat_completion(messages, model=None, max_retries=3, initial_retry_delay=1):
-    """获取聊天完成结果，包含重试逻辑"""
+def get_chat_completion(messages, model=None, max_retries=3, initial_retry_delay=1,
+                        client_type="auto", api_key=None, base_url=None):
+    """
+    获取聊天完成结果，包含重试逻辑
+
+    Args:
+        messages: 消息列表，OpenAI 格式
+        model: 模型名称（可选）
+        max_retries: 最大重试次数
+        initial_retry_delay: 初始重试延迟（秒）
+        client_type: 客户端类型 ("auto", "gemini", "openai_compatible")
+        api_key: API 密钥（可选，仅用于 OpenAI Compatible API）
+        base_url: API 基础 URL（可选，仅用于 OpenAI Compatible API）
+
+    Returns:
+        str: 模型回答内容或 None（如果出错）
+    """
     try:
-        if model is None:
-            model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        # 创建客户端
+        client = LLMClientFactory.create_client(
+            client_type=client_type,
+            api_key=api_key,
+            base_url=base_url,
+            model=model
+        )
 
-        logger.info(f"{WAIT_ICON} 使用模型: {model}")
-        logger.debug(f"消息内容: {messages}")
-
-        for attempt in range(max_retries):
-            try:
-                # 转换消息格式
-                prompt = ""
-                system_instruction = None
-
-                for message in messages:
-                    role = message["role"]
-                    content = message["content"]
-                    if role == "system":
-                        system_instruction = content
-                    elif role == "user":
-                        prompt += f"User: {content}\n"
-                    elif role == "assistant":
-                        prompt += f"Assistant: {content}\n"
-
-                # 准备配置
-                config = {}
-                if system_instruction:
-                    config['system_instruction'] = system_instruction
-
-                # 调用 API
-                response = generate_content_with_retry(
-                    model=model,
-                    contents=prompt.strip(),
-                    config=config
-                )
-
-                if response is None:
-                    logger.warning(
-                        f"{ERROR_ICON} 尝试 {attempt + 1}/{max_retries}: API 返回空值")
-                    if attempt < max_retries - 1:
-                        retry_delay = initial_retry_delay * (2 ** attempt)
-                        logger.info(f"{WAIT_ICON} 等待 {retry_delay} 秒后重试...")
-                        time.sleep(retry_delay)
-                        continue
-                    return None
-
-                # 转换响应格式
-                chat_message = ChatMessage(content=response.text)
-                chat_choice = ChatChoice(message=chat_message)
-                completion = ChatCompletion(choices=[chat_choice])
-
-                logger.debug(f"API 原始响应: {response.text}")
-                logger.info(f"{SUCCESS_ICON} 成功获取响应")
-                return completion.choices[0].message.content
-
-            except Exception as e:
-                logger.error(
-                    f"{ERROR_ICON} 尝试 {attempt + 1}/{max_retries} 失败: {str(e)}")
-                if attempt < max_retries - 1:
-                    retry_delay = initial_retry_delay * (2 ** attempt)
-                    logger.info(f"{WAIT_ICON} 等待 {retry_delay} 秒后重试...")
-                    time.sleep(retry_delay)
-                else:
-                    logger.error(f"{ERROR_ICON} 最终错误: {str(e)}")
-                    return None
-
+        # 获取回答
+        return client.get_completion(
+            messages=messages,
+            max_retries=max_retries,
+            initial_retry_delay=initial_retry_delay
+        )
     except Exception as e:
         logger.error(f"{ERROR_ICON} get_chat_completion 发生错误: {str(e)}")
         return None
