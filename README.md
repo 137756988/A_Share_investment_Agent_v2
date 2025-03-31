@@ -50,7 +50,12 @@ poetry run python src/main.py --ticker 000000 #修改成你想要测试的股票
 
 # 显示详细推理过程 - 查看每个智能体的分析过程
 poetry run python src/main.py --ticker 000000 --show-reasoning #修改成你想要测试的股票代码
+
+# 启动后端API服务 - 推荐使用，可通过Web接口分析多支股票
+poetry run python run_with_backend.py
 ```
+
+最后一种方式会启动一个 API 服务，可以通过浏览器访问 http://localhost:8000/docs 来使用交互式 API 文档，轻松分析不同的股票。详细使用说明请参考[后端设计文档](docs/backend_design.md)。
 
 系统由以下几个协同工作的 agent 组成：
 
@@ -164,69 +169,56 @@ $env:OPENAI_COMPATIBLE_MODEL='your-model-name'
 
 ## Usage
 
-### Running Our System
+### 运行方式
 
-系统支持多种运行方式，可以根据需要组合使用不同的参数：
+系统支持多种运行方式：
 
-1. **基本运行**
+1. **命令行分析模式**
 
 ```bash
+# 基本运行
 poetry run python src/main.py --ticker 301155
-```
 
-这将使用默认参数运行系统，包括：
-
-- 默认分析 5 条新闻（num_of_news=5）
-- 不显示详细分析过程（show_reasoning=False）
-- 使用默认的初始资金（initial_capital=100,000）
-
-2. **显示分析推理过程**
-
-```bash
+# 显示分析推理过程
 poetry run python src/main.py --ticker 301155 --show-reasoning
 ```
 
-这将显示每个智能体（Market Data Agent、Technical Analyst、Fundamentals Agent、Sentiment Agent、Risk Manager、Portfolio Manager）的分析过程和推理结果。
-
-这允许你设置：
-
-- initial_capital: 初始现金金额（可选，默认为 100,000）
-
-4. **自定义新闻分析数量和具体日期的投资建议**
+2. **后端 API 服务模式（推荐）**
 
 ```bash
-poetry run python src/main.py --ticker 301157 --show-reasoning --end-date 2024-12-11 --num-of-news 20
+# 启动API服务
+poetry run python run_with_backend.py
 ```
 
-这将：
+启动后，可以通过浏览器访问 http://localhost:8000/docs 使用交互式 API 界面：
 
-- 分析指定日期范围内最近的 20 条新闻进行情绪分析
-- start-date 和 end-date 格式为 YYYY-MM-DD
+- **分析新股票**：使用`POST /analysis/start`接口，只需提供股票代码
+- **检查分析状态**：使用`GET /analysis/{run_id}/status`接口
+- **获取分析结果**：使用`GET /analysis/{run_id}/result`接口
+- **查看详细分析**：使用`GET /runs/{run_id}/agents/{agent_name}`接口
 
-5. **回测功能**
+API 服务模式的优势：
+
+- 可以同时分析多支不同的股票
+- 分析任务在后台异步执行，不会阻塞主界面
+- 所有结果都可以通过 API 查询
+- 无需为每次分析重启程序
+
+3. **组合模式**
 
 ```bash
-poetry run python src/backtester.py --ticker 301157 --start-date 2024-12-11 --end-date 2025-01-07 --num-of-news 20
+# 启动API服务并立即分析一支股票
+poetry run python run_with_backend.py --ticker 301155 --show-reasoning
 ```
-
-回测功能支持以下参数：
-
-- ticker: 股票代码
-- start-date: 回测开始日期（YYYY-MM-DD）
-- end-date: 回测结束日期（YYYY-MM-DD）
-- initial-capital: 初始资金（可选，默认为 100,000）
-- num-of-news: 情绪分析使用的新闻数量（可选，默认为 5，最大为 100）
 
 ### 参数说明
 
-- `--ticker`: 股票代码（必需）
+- `--ticker`: 股票代码（必需，仅命令行模式）
 - `--show-reasoning`: 显示分析推理过程（可选，默认为 false）
 - `--initial-capital`: 初始现金金额（可选，默认为 100,000）
-- `--num-of-news`: 情绪分析使用的新闻数量（可选，默认为 5，最大为 100）
-- `--start-date`: 开始日期，格式 YYYY-MM-DD（可选）
-- `--end-date`: 结束日期，格式 YYYY-MM-DD（可选）
+- `--num-of-news`: 情绪分析使用的新闻数量（可选，默认为 5）
 
-### 输出说明
+### 命令行模式输出说明
 
 系统会输出以下信息：
 

@@ -1,9 +1,11 @@
 from langchain_core.messages import HumanMessage
 from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
+from src.utils.api_utils import agent_endpoint, log_llm_interaction
 import json
 import ast
 
 
+@agent_endpoint("researcher_bear", "空方研究员，从看空角度分析市场数据并提出风险警示")
 def researcher_bear_agent(state: AgentState):
     """Analyzes signals from a bearish perspective and generates cautionary investment thesis."""
     show_workflow_status("Bearish Researcher")
@@ -95,9 +97,12 @@ def researcher_bear_agent(state: AgentState):
 
     if show_reasoning:
         show_agent_reasoning(message_content, "Bearish Researcher")
+        # 保存推理信息到metadata供API使用
+        state["metadata"]["agent_reasoning"] = message_content
 
     show_workflow_status("Bearish Researcher", "completed")
     return {
         "messages": state["messages"] + [message],
         "data": state["data"],
+        "metadata": state["metadata"],
     }

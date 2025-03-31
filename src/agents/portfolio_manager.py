@@ -1,12 +1,14 @@
 from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
-from src.tools.openrouter_config import get_chat_completion
 import json
 
 from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
+from src.tools.openrouter_config import get_chat_completion
+from src.utils.api_utils import agent_endpoint, log_llm_interaction
 
 
 ##### Portfolio Management Agent #####
+@agent_endpoint("portfolio_management", "负责投资组合管理和最终交易决策")
 def portfolio_management_agent(state: AgentState):
     """Responsible for portfolio management"""
     show_workflow_status("Portfolio Manager")
@@ -99,8 +101,20 @@ def portfolio_management_agent(state: AgentState):
             You can only sell if you have shares in the portfolio to sell."""
     }
 
+    # 记录LLM请求
+    request_data = {
+        "system_message": system_message,
+        "user_message": user_message
+    }
+
     # Get the completion from OpenRouter
     result = get_chat_completion([system_message, user_message])
+
+    # 记录LLM交互
+    state["metadata"]["current_agent_name"] = "portfolio_management"
+    log_llm_interaction(state)(
+        lambda: result
+    )()
 
     # 如果API调用失败，使用默认的保守决策
     if result is None:
@@ -144,14 +158,17 @@ def portfolio_management_agent(state: AgentState):
         name="portfolio_management",
     )
 
-    # Print the decision if the flag is set
+    # 保存推理信息到state的metadata供API使用
+    reasoning_content = result
     if show_reasoning:
-        show_agent_reasoning(message.content, "Portfolio Management Agent")
+        show_agent_reasoning(reasoning_content, "Portfolio Management Agent")
+        state["metadata"]["agent_reasoning"] = reasoning_content
 
     show_workflow_status("Portfolio Manager", "completed")
     return {
         "messages": state["messages"] + [message],
         "data": state["data"],
+        "metadata": state["metadata"],
     }
 
 

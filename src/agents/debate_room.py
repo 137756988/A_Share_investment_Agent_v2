@@ -1,6 +1,7 @@
 from langchain_core.messages import HumanMessage
 from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
 from src.tools.openrouter_config import get_chat_completion
+from src.utils.api_utils import agent_endpoint, log_llm_interaction
 import json
 import ast
 import logging
@@ -9,6 +10,7 @@ import logging
 logger = logging.getLogger('debate_room')
 
 
+@agent_endpoint("debate_room", "辩论室，分析多空双方观点，得出平衡的投资结论")
 def debate_room_agent(state: AgentState):
     """Facilitates debate between bull and bear researchers to reach a balanced conclusion."""
     show_workflow_status("Debate Room")
@@ -122,7 +124,12 @@ def debate_room_agent(state: AgentState):
             {"role": "system", "content": "You are a professional financial analyst. Please provide your analysis in English only, not in Chinese or any other language."},
             {"role": "user", "content": llm_prompt}
         ]
-        llm_response = get_chat_completion(messages)
+
+        # 使用log_llm_interaction装饰器记录LLM交互
+        llm_response = log_llm_interaction(state)(
+            lambda: get_chat_completion(messages)
+        )()
+
         logger.info("LLM 返回响应完成")
 
         # 解析 LLM 返回的 JSON
@@ -202,6 +209,8 @@ def debate_room_agent(state: AgentState):
 
     if show_reasoning:
         show_agent_reasoning(message_content, "Debate Room")
+        # 保存推理信息到metadata供API使用
+        state["metadata"]["agent_reasoning"] = message_content
 
     show_workflow_status("Debate Room", "completed")
     logger.info("辩论室分析完成")
@@ -210,5 +219,6 @@ def debate_room_agent(state: AgentState):
         "data": {
             **state["data"],
             "debate_analysis": message_content
-        }
+        },
+        "metadata": state["metadata"],
     }

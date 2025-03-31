@@ -3,6 +3,7 @@ from src.tools.openrouter_config import get_chat_completion
 from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
 from src.tools.api import get_financial_metrics, get_financial_statements, get_market_data, get_price_history
 from src.utils.logging_config import setup_logger
+from src.utils.api_utils import agent_endpoint, log_llm_interaction
 
 from datetime import datetime, timedelta
 import pandas as pd
@@ -11,6 +12,7 @@ import pandas as pd
 logger = setup_logger('market_data_agent')
 
 
+@agent_endpoint("market_data", "市场数据收集，负责获取股价历史、财务指标和市场信息")
 def market_data_agent(state: AgentState):
     """Responsible for gathering and preprocessing market data"""
     show_workflow_status("Market Data Agent")
@@ -76,6 +78,24 @@ def market_data_agent(state: AgentState):
     # 转换价格数据为字典格式
     prices_dict = prices_df.to_dict('records')
 
+    # 保存推理信息到metadata供API使用
+    market_data_summary = {
+        "ticker": ticker,
+        "start_date": start_date,
+        "end_date": end_date,
+        "data_collected": {
+            "price_history": len(prices_dict) > 0,
+            "financial_metrics": len(financial_metrics) > 0,
+            "financial_statements": len(financial_line_items) > 0,
+            "market_data": len(market_data) > 0
+        },
+        "summary": f"为{ticker}收集了从{start_date}到{end_date}的市场数据，包括价格历史、财务指标和市场信息"
+    }
+
+    if show_reasoning:
+        show_agent_reasoning(market_data_summary, "Market Data Agent")
+        state["metadata"]["agent_reasoning"] = market_data_summary
+
     return {
         "messages": messages,
         "data": {
@@ -87,5 +107,6 @@ def market_data_agent(state: AgentState):
             "financial_line_items": financial_line_items,
             "market_cap": market_data.get("market_cap", 0),
             "market_data": market_data,
-        }
+        },
+        "metadata": state["metadata"],
     }
