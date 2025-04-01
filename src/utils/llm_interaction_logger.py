@@ -4,7 +4,7 @@ import sys
 import logging
 from contextvars import ContextVar
 from typing import Any, Callable, List, Optional, Dict, Tuple
-from datetime import datetime
+from datetime import datetime, UTC
 
 from backend.schemas import LLMInteractionLog, AgentExecutionLog
 from backend.storage.base import BaseLogStorage
@@ -116,7 +116,8 @@ def wrap_llm_call(original_llm_func: Callable) -> Callable:
             run_id=run_id,  # run_id can be None if not set
             request_data=request_data,  # Consider serializing complex objects if needed
             response_data=response_data,  # Consider serializing complex objects if needed
-            timestamp=datetime.utcnow()  # Explicit timestamp in case storage adds its own
+            # Explicit timestamp in case storage adds its own
+            timestamp=datetime.now(UTC)
         )
         storage.add_log(log_entry)
 
@@ -148,7 +149,7 @@ def log_agent_execution(agent_name: str):
             run_id_token = current_run_id_context.set(run_id)
 
             # 捕获开始时间和输入状态
-            timestamp_start = datetime.utcnow()
+            timestamp_start = datetime.now(UTC)
             serialized_input = serialize_agent_state(state)
 
             # 准备输出捕获
@@ -163,7 +164,7 @@ def log_agent_execution(agent_name: str):
                     result_state = agent_func(state)
 
                 # 成功执行，记录日志
-                timestamp_end = datetime.utcnow()
+                timestamp_end = datetime.now(UTC)
                 terminal_outputs = output_capture.outputs
 
                 if storage and result_state:
@@ -202,7 +203,7 @@ def log_agent_execution(agent_name: str):
 
                 # 如果出现错误但存储可用，记录错误日志
                 if error and storage:
-                    timestamp_end = datetime.utcnow()
+                    timestamp_end = datetime.now(UTC)
                     log_entry = AgentExecutionLog(
                         agent_name=agent_name,
                         run_id=run_id,

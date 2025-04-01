@@ -62,6 +62,14 @@ def run_hedge_fund(ticker: str, start_date: str, end_date: str, portfolio: dict,
     run_id = str(uuid.uuid4())  # Generate unique ID for this run
     print(f"--- Starting Workflow Run ID: {run_id} ---")
 
+    # 设置backend的run_id
+    try:
+        from backend.state import api_state
+        api_state.current_run_id = run_id
+        print(f"--- API State updated with Run ID: {run_id} ---")
+    except Exception as e:
+        print(f"Note: Could not update API state: {str(e)}")
+
     initial_state = {
         "messages": [
             HumanMessage(
@@ -80,8 +88,25 @@ def run_hedge_fund(ticker: str, start_date: str, end_date: str, portfolio: dict,
             "run_id": run_id,  # Pass run_id in metadata
         }
     }
-    final_state = app.invoke(initial_state)
-    print(f"--- Finished Workflow Run ID: {run_id} ---")
+
+    # 使用backend的workflow_run上下文管理器（如果可用）
+    try:
+        from backend.utils.context_managers import workflow_run
+        with workflow_run(run_id):
+            final_state = app.invoke(initial_state)
+            print(f"--- Finished Workflow Run ID: {run_id} ---")
+    except ImportError:
+        # 如果未能导入，直接执行
+        final_state = app.invoke(initial_state)
+        print(f"--- Finished Workflow Run ID: {run_id} ---")
+
+        # 尝试更新API状态（如果可用）
+        try:
+            api_state.complete_run(run_id, "completed")
+        except Exception:
+            pass
+
+    # 保持原有的返回格式：最后一条消息的内容
     return final_state["messages"][-1].content
 
 

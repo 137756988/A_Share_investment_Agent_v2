@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, List, Optional
 
 
@@ -8,7 +8,7 @@ class LLMInteractionLog(BaseModel):
     agent_name: str = Field(...,
                             description="The name of the agent initiating the interaction.")
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow, description="Timestamp of the log entry.")
+        default_factory=lambda: datetime.now(UTC), description="Timestamp of the log entry.")
     request_data: Any = Field(..., description="Data sent to the LLM.")
     response_data: Any = Field(..., description="Data received from the LLM.")
     run_id: Optional[str] = Field(
