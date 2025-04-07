@@ -18,7 +18,15 @@ async def list_runs(
     limit: int = Query(10, ge=1, le=100, description="要返回的最大运行数"),
     storage: BaseLogStorage = Depends(get_log_storage)
 ):
-    """获取最近运行的列表"""
+    """获取最近运行的列表 (基于日志存储)
+
+    此接口查询 BaseLogStorage (当前为内存实现 InMemoryLogStorage)
+    中的 AgentExecutionLog 记录，返回最近完成的工作流运行摘要。
+    注意：基于内存的日志在服务重启后会丢失。
+
+    TODO: 通过依赖注入 BaseLogStorage 的不同实现 (如数据库存储)，
+          可以轻松切换到底层存储，无需修改此接口代码。
+    """
     try:
         # 获取所有运行ID
         run_ids = storage.get_unique_run_ids()
@@ -61,7 +69,15 @@ async def get_run(
     run_id: str = Path(..., description="要获取的运行ID"),
     storage: BaseLogStorage = Depends(get_log_storage)
 ):
-    """获取特定运行的概述信息"""
+    """获取特定运行的概述信息 (基于日志存储)
+
+    查询 BaseLogStorage (当前为内存实现 InMemoryLogStorage) 中
+    特定 run_id 的 AgentExecutionLog 记录，返回该运行的摘要信息。
+    注意：基于内存的日志在服务重启后会丢失。
+
+    TODO: 通过依赖注入 BaseLogStorage 的不同实现 (如数据库存储)，
+          可以轻松切换到底层存储，无需修改此接口代码。
+    """
     try:
         # 获取该运行的所有Agent日志
         agent_logs = storage.get_agent_logs(run_id=run_id)
@@ -100,7 +116,15 @@ async def get_run_agents(
     run_id: str = Path(..., description="要获取Agent的运行ID"),
     storage: BaseLogStorage = Depends(get_log_storage)
 ):
-    """获取特定运行中所有Agent的执行情况"""
+    """获取特定运行中所有Agent的执行情况 (基于日志存储)
+
+    查询 BaseLogStorage (当前为内存实现 InMemoryLogStorage) 中
+    特定 run_id 的所有 AgentExecutionLog 记录。
+    注意：基于内存的日志在服务重启后会丢失。
+
+    TODO: 通过依赖注入 BaseLogStorage 的不同实现 (如数据库存储)，
+          可以轻松切换到底层存储，无需修改此接口代码。
+    """
     try:
         # 获取该运行的所有Agent日志
         agent_logs = storage.get_agent_logs(run_id=run_id)
@@ -142,7 +166,15 @@ async def get_agent_detail(
     include_states: bool = Query(True, description="是否包含输入/输出状态"),
     storage: BaseLogStorage = Depends(get_log_storage)
 ):
-    """获取特定运行中特定Agent的详细执行情况"""
+    """获取特定运行中特定Agent的详细执行情况 (基于日志存储)
+
+    查询 BaseLogStorage (当前为内存实现 InMemoryLogStorage) 中
+    特定 run_id 和 agent_name 的 AgentExecutionLog 及关联的 LLMInteractionLog。
+    注意：基于内存的日志在服务重启后会丢失。
+
+    TODO: 通过依赖注入 BaseLogStorage 的不同实现 (如数据库存储)，
+          可以轻松切换到底层存储，无需修改此接口代码。
+    """
     try:
         # 获取特定Agent的日志
         agent_logs = storage.get_agent_logs(
@@ -191,7 +223,15 @@ async def get_workflow_flow(
     run_id: str = Path(..., description="运行ID"),
     storage: BaseLogStorage = Depends(get_log_storage)
 ):
-    """获取特定运行的完整工作流程和数据流"""
+    """获取特定运行的完整工作流程和数据流 (基于日志存储)
+
+    查询 BaseLogStorage (当前为内存实现 InMemoryLogStorage) 中
+    特定 run_id 的所有 AgentExecutionLog，构建工作流图。
+    注意：基于内存的日志在服务重启后会丢失。
+
+    TODO: 通过依赖注入 BaseLogStorage 的不同实现 (如数据库存储)，
+          可以轻松切换到底层存储，无需修改此接口代码。
+    """
     try:
         # 获取该运行的所有Agent日志
         agent_logs = storage.get_agent_logs(run_id=run_id)

@@ -16,7 +16,13 @@ router = APIRouter(prefix="/api/workflow", tags=["Workflow"])
 
 @router.get("/status", response_model=ApiResponse[Dict])
 async def get_workflow_status():
-    """获取当前工作流状态"""
+    """获取当前正在运行的工作流状态 (基于内存状态)
+
+    此接口查询内存中的 api_state 对象，返回当前正在执行的工作流的实时状态，
+    包括运行ID、开始时间以及活跃Agent的状态。
+    如果当前没有工作流在运行，则返回 'idle' 状态。
+    注意：此状态信息仅反映当前情况，并在服务重启后丢失。
+    """
     current_run_id = api_state.current_run_id
     if not current_run_id:
         return ApiResponse(

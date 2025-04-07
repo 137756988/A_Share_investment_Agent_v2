@@ -26,7 +26,9 @@ import multiprocessing
 from datetime import datetime, timedelta
 
 # 导入新的API工具
-from src.utils.api_utils import workflow_run, start_api_server
+from src.utils.api_utils import start_api_server
+# 直接从源文件导入 workflow_run 上下文管理器
+from backend.utils.context_managers import workflow_run
 
 # 导入原始main.py的关键组件
 from src.main import run_hedge_fund

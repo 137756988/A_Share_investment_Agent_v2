@@ -58,8 +58,7 @@ sys.stdout = OutputLogger()
 
 
 # --- Run the Hedge Fund Workflow ---
-def run_hedge_fund(ticker: str, start_date: str, end_date: str, portfolio: dict, show_reasoning: bool = False, num_of_news: int = 5):
-    run_id = str(uuid.uuid4())  # Generate unique ID for this run
+def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, portfolio: dict, show_reasoning: bool = False, num_of_news: int = 5):
     print(f"--- Starting Workflow Run ID: {run_id} ---")
 
     # 设置backend的run_id
@@ -113,28 +112,18 @@ def run_hedge_fund(ticker: str, start_date: str, end_date: str, portfolio: dict,
 # --- Define the Workflow Graph ---
 workflow = StateGraph(AgentState)
 
-# Add nodes with logging decorator
-# The decorator sets context variables (agent_name, run_id) used by the LLM wrapper
-workflow.add_node("market_data_agent", log_agent_execution(
-    "market_data")(market_data_agent))
-workflow.add_node("technical_analyst_agent", log_agent_execution(
-    "technical_analyst")(technical_analyst_agent))
-workflow.add_node("fundamentals_agent", log_agent_execution(
-    "fundamentals")(fundamentals_agent))
-workflow.add_node("sentiment_agent", log_agent_execution(
-    "sentiment")(sentiment_agent))
-workflow.add_node("valuation_agent", log_agent_execution(
-    "valuation")(valuation_agent))
-workflow.add_node("researcher_bull_agent", log_agent_execution(
-    "researcher_bull")(researcher_bull_agent))
-workflow.add_node("researcher_bear_agent", log_agent_execution(
-    "researcher_bear")(researcher_bear_agent))
-workflow.add_node("debate_room_agent", log_agent_execution(
-    "debate_room")(debate_room_agent))
-workflow.add_node("risk_management_agent", log_agent_execution(
-    "risk_management")(risk_management_agent))
-workflow.add_node("portfolio_management_agent", log_agent_execution(
-    "portfolio_management")(portfolio_management_agent))
+# Add nodes - Remove explicit log_agent_execution calls
+# The @agent_endpoint decorator now handles logging to BaseLogStorage
+workflow.add_node("market_data_agent", market_data_agent)
+workflow.add_node("technical_analyst_agent", technical_analyst_agent)
+workflow.add_node("fundamentals_agent", fundamentals_agent)
+workflow.add_node("sentiment_agent", sentiment_agent)
+workflow.add_node("valuation_agent", valuation_agent)
+workflow.add_node("researcher_bull_agent", researcher_bull_agent)
+workflow.add_node("researcher_bear_agent", researcher_bear_agent)
+workflow.add_node("debate_room_agent", debate_room_agent)
+workflow.add_node("risk_management_agent", risk_management_agent)
+workflow.add_node("portfolio_management_agent", portfolio_management_agent)
 
 # Define the workflow edges (remain unchanged)
 workflow.set_entry_point("market_data_agent")
@@ -231,7 +220,10 @@ if __name__ == "__main__":
     }
 
     # --- Execute Workflow ---
+    # Generate run_id here when running directly
+    main_run_id = str(uuid.uuid4())
     result = run_hedge_fund(
+        run_id=main_run_id,  # Pass the generated run_id
         ticker=args.ticker,
         start_date=start_date.strftime('%Y-%m-%d'),
         end_date=end_date.strftime('%Y-%m-%d'),

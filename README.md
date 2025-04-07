@@ -51,7 +51,7 @@ poetry run python src/main.py --ticker 000000 #修改成你想要测试的股票
 # 显示详细推理过程 - 查看每个智能体的分析过程
 poetry run python src/main.py --ticker 000000 --show-reasoning #修改成你想要测试的股票代码
 
-# 启动后端API服务 - 推荐使用，可通过Web接口分析多支股票
+# 启动后端API服务
 poetry run python run_with_backend.py
 ```
 
@@ -183,26 +183,29 @@ poetry run python src/main.py --ticker 301155
 poetry run python src/main.py --ticker 301155 --show-reasoning
 ```
 
-2. **后端 API 服务模式（推荐）**
+2. **后端 API 服务**
 
 ```bash
 # 启动API服务
 poetry run python run_with_backend.py
 ```
 
-启动后，可以通过浏览器访问 http://localhost:8000/docs 使用交互式 API 界面：
+启动后，可以通过浏览器访问 http://localhost:8000/docs 使用交互式 API 界面。
+常用 API 端点包括：
 
-- **分析新股票**：使用`POST /analysis/start`接口，只需提供股票代码
-- **检查分析状态**：使用`GET /analysis/{run_id}/status`接口
-- **获取分析结果**：使用`GET /analysis/{run_id}/result`接口
-- **查看详细分析**：使用`GET /runs/{run_id}/agents/{agent_name}`接口
+- **开始新的分析**：使用 `POST /analysis/start` 接口，在请求体中提供股票代码、初始资金等信息。
+- **查看当前工作流状态**：使用 `GET /api/workflow/status` 接口，获取当前运行 ID 和活跃 Agent 状态 (基于内存 `api_state`)。
+- **列出历史运行**：使用 `GET /runs/` 接口，获取基于 `BaseLogStorage` (当前为内存) 记录的已完成运行列表。
+- **查看特定运行的流程图**：使用 `GET /runs/{run_id}/flow` 接口，获取指定运行的完整 Agent 执行流程图。
+- **查看特定 Agent 的详细执行日志**：使用 `GET /runs/{run_id}/agents/{agent_name}` 接口，获取该 Agent 的输入/输出状态、执行时间等详细信息。
+- **查看 LLM 交互日志**：使用 `GET /logs/` 接口 (可能需要根据具体实现调整或确认)，查询特定 Agent 和运行的 LLM 调用记录。
 
 API 服务模式的优势：
 
-- 可以同时分析多支不同的股票
 - 分析任务在后台异步执行，不会阻塞主界面
 - 所有结果都可以通过 API 查询
 - 无需为每次分析重启程序
+- 可以直接根据该后端编写自己的前端界面
 
 3. **组合模式**
 
@@ -315,39 +318,66 @@ Final Result:
 ## Project Structure
 
 ```
-ai-hedge-fund/
-├── src/                         # 源代码目录
-│   ├── agents/                  # agent定义和工作流
-│   │   ├── fundamentals.py      # Fundamentals Agent
-│   │   ├── market_data.py       # Market Data Agent
-│   │   ├── portfolio_manager.py # Portfolio Manager
-│   │   ├── risk_manager.py      # Risk Manager
-│   │   ├── sentiment.py         # Sentiment Agent
-│   │   ├── state.py            # Agent状态管理
-│   │   ├── technicals.py       # Technical Analyst
-│   │   ├── valuation.py        # Valuation Agent
-│   │   └── debate_room.py       # Debate Room Agent
-│   ├── data/                   # 数据存储目录
-│   │   ├── sentiment_cache.json # 情绪分析缓存
-│   │   └── stock_news/         # 股票新闻数据
-│   ├── tools/                  # 工具和功能模块
-│   │   ├── api.py              # API接口和数据获取
-│   │   ├── data_analyzer.py    # 数据分析工具
-│   │   ├── news_crawler.py     # 新闻爬取工具
-│   │   ├── openrouter_config.py # OpenRouter配置
-│   │   └── test_*.py           # 测试文件
-│   ├── utils/                  # 通用工具函数
-│   │   ├── logging_config.py   # 日志配置
-│   │   └── llm_clients.py      # LLM客户端（支持Gemini和OpenAI Compatible API）
-│   ├── backtester.py          # 回测系统
-│   └── main.py                # 主程序入口
-├── logs/                      # 日志文件目录
-│   ├── api_calls_*.log        # API调用日志
-│   └── backtest_*.log         # 回测结果日志
+A_Share_investment_Agent/
+├── backend/                     # 后端 API 和服务
+│   ├── dependencies.py          # 依赖注入 (如 LogStorage)
+│   ├── main.py                  # FastAPI 应用实例
+│   ├── models/                  # API 请求/响应模型 (Pydantic)
+│   │   ├── analysis.py          # /analysis/ 相关路由
+│   │   ├── api_runs.py          # /api/runs/ 相关路由 (基于 api_state)
+│   │   ├── logs.py              # /logs/ 相关路由
+│   │   ├── runs.py              # /runs/ 相关路由 (基于 BaseLogStorage)
+│   │   └── workflow.py          # /api/workflow/ 相关路由
+│   ├── schemas.py               # 内部数据结构/日志模型 (Pydantic)
+│   ├── services/                # 业务逻辑服务
+│   │   └── analysis.py          # 股票分析服务
+│   ├── state.py                 # 内存状态管理 (api_state)
+│   ├── storage/                 # 日志存储实现
+│   │   ├── base.py              # BaseLogStorage 接口定义
+│   │   └── memory.py            # InMemoryLogStorage 实现
+│   └── utils/                   # 后端工具函数
+│       ├── api_utils.py         # API 相关工具
+│       └── context_managers.py  # 上下文管理器 (如 workflow_run)
+├── src/                         # Agent 核心逻辑和工具
+│   ├── agents/                  # Agent 定义和工作流
+│   │   ├── __init__.py
+│   │   ├── debate_room.py
+│   │   ├── fundamentals.py
+│   │   ├── market_data.py
+│   │   ├── portfolio_manager.py
+│   │   ├── researcher_bear.py
+│   │   ├── researcher_bull.py
+│   │   ├── risk_manager.py
+│   │   ├── sentiment.py
+│   │   ├── state.py
+│   │   ├── technicals.py
+│   │   └── valuation.py
+│   ├── data/                   # 数据存储目录 (本地缓存等)
+│   │   ├── img/                # 项目图片
+│   │   ├── sentiment_cache.json
+│   │   └── stock_news/
+│   ├── tools/                  # 工具和功能模块 (LLM, 数据获取)
+│   │   ├── __init__.py
+│   │   ├── api.py
+│   │   ├── data_analyzer.py
+│   │   ├── news_crawler.py
+│   │   └── openrouter_config.py
+│   ├── utils/                  # 通用工具函数 (日志, LLM客户端, 序列化)
+│   │   ├── __init__.py
+│   │   ├── api_utils.py        # Agent 共享的API工具 (逐步迁移至 backend)
+│   │   ├── llm_clients.py
+│   │   ├── llm_interaction_logger.py
+│   │   ├── logging_config.py
+│   │   ├── output_logger.py
+│   │   └── serialization.py
+│   ├── backtester.py          # 回测系统 (可能需要检查状态)
+│   └── main.py                # Agent 工作流定义和命令行入口
+├── logs/                      # 日志文件目录 (主要由 OutputLogger 生成)
 ├── .env                       # 环境变量配置
 ├── .env.example              # 环境变量示例
 ├── poetry.lock               # Poetry依赖锁定文件
 ├── pyproject.toml            # Poetry项目配置
+├── run_with_backend.py       # 启动后端并可选执行分析的脚本
 └── README.md                 # 项目文档
 ```
 
