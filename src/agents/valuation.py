@@ -1,8 +1,10 @@
 from langchain_core.messages import HumanMessage
 from src.agents.state import AgentState, show_agent_reasoning, show_workflow_status
+from src.utils.api_utils import agent_endpoint, log_llm_interaction
 import json
 
 
+@agent_endpoint("valuation", "估值分析师，使用DCF和所有者收益法评估公司内在价值")
 def valuation_agent(state: AgentState):
     """Responsible for valuation analysis"""
     show_workflow_status("Valuation Agent")
@@ -75,6 +77,8 @@ def valuation_agent(state: AgentState):
 
     if show_reasoning:
         show_agent_reasoning(message_content, "Valuation Analysis Agent")
+        # 保存推理信息到metadata供API使用
+        state["metadata"]["agent_reasoning"] = message_content
 
     show_workflow_status("Valuation Agent", "completed")
     return {
@@ -82,7 +86,8 @@ def valuation_agent(state: AgentState):
         "data": {
             **data,
             "valuation_analysis": message_content
-        }
+        },
+        "metadata": state["metadata"],
     }
 
 
