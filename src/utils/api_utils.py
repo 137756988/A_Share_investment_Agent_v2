@@ -80,9 +80,6 @@ T = TypeVar('T')
 # 增加一个全局字典用于跟踪每个agent的LLM调用
 _agent_llm_calls = {}
 
-# 增加一个记录get_chat_completion原始函数的变量
-_original_get_chat_completion = None
-
 # -----------------------------------------------------------------------------
 # FastAPI应用
 # -----------------------------------------------------------------------------
@@ -165,18 +162,53 @@ def log_llm_interaction(state):
                 "line": caller_frame.f_lineno
             }
 
+            # 执行原始函数获取结果
             result = llm_func(*args, **kwargs)
 
-            # 如果有当前运行的Agent名称，记录LLM交互
-            agent_name = state.get("metadata", {}).get("current_agent_name")
-            run_id = state.get("metadata", {}).get("run_id")
+            # 从state中提取agent_name和run_id
+            agent_name = None
+            run_id = None
+
+            # 尝试从state参数中提取
+            if isinstance(state, dict):
+                agent_name = state.get("metadata", {}).get(
+                    "current_agent_name")
+                run_id = state.get("metadata", {}).get("run_id")
+
+            # 如果state中没有，尝试从上下文变量中获取
+            if not agent_name:
+                try:
+                    from src.utils.llm_interaction_logger import current_agent_name_context, current_run_id_context
+                    agent_name = current_agent_name_context.get()
+                    run_id = current_run_id_context.get()
+                except (ImportError, AttributeError):
+                    pass
+
+            # 如果仍然没有，尝试从api_state中获取当前运行的agent
+            if not agent_name and hasattr(api_state, "current_agent_name"):
+                agent_name = api_state.current_agent_name
+                run_id = api_state.current_run_id
 
             if agent_name:
                 timestamp = datetime.now(UTC)
 
+                # 提取messages参数
+                messages = None
+                if "messages" in kwargs:
+                    messages = kwargs["messages"]
+                elif args and len(args) > 0:
+                    messages = args[0]
+
+                # 提取其他参数
+                model = kwargs.get("model")
+                client_type = kwargs.get("client_type", "auto")
+
                 # 准备格式化的请求数据
                 formatted_request = {
                     "caller": caller_info,
+                    "messages": messages,
+                    "model": model,
+                    "client_type": client_type,
                     "arguments": format_llm_request(args),
                     "kwargs": format_llm_request(kwargs) if kwargs else {}
                 }
@@ -214,82 +246,6 @@ def log_llm_interaction(state):
             return result
         return wrapper
     return decorator
-
-
-def patch_get_chat_completion():
-    """
-    使用猴子补丁拦截所有get_chat_completion调用，确保能够捕获任何agent中的LLM交互
-    """
-    try:
-        # 避免循环导入
-        from src.tools.openrouter_config import get_chat_completion as original_func
-        global _original_get_chat_completion
-
-        if _original_get_chat_completion is not None:
-            logger.debug("get_chat_completion已经被拦截，不再重复应用补丁")
-            return  # 已经打过补丁了
-
-        logger.info("正在应用get_chat_completion拦截补丁...")
-        _original_get_chat_completion = original_func
-
-        def patched_get_chat_completion(messages, model=None, max_retries=3, initial_retry_delay=1,
-                                        client_type="auto", api_key=None, base_url=None):
-            """拦截get_chat_completion调用的猴子补丁
-            (注意: 已移除日志记录和状态更新逻辑，仅保留调用原始函数)
-            """
-            # --- 移除了尝试获取上下文 (current_agent, run_id) 的逻辑 ---
-            # --- 移除了记录请求详情的日志 ---
-            try:
-                # 直接调用原始函数获取LLM响应
-                response = _original_get_chat_completion(
-                    messages,
-                    model=model,
-                    max_retries=max_retries,
-                    initial_retry_delay=initial_retry_delay,
-                    client_type=client_type,
-                    api_key=api_key,
-                    base_url=base_url
-                )
-                # --- 移除了记录耗时、格式化数据、更新api_state、添加到BaseLogStorage的逻辑 ---
-                return response
-
-            except Exception as e:
-                logger.error(f"执行原始LLM调用时出错: {str(e)}")
-                # 出错时仍然尝试调用原始函数 (这是原始代码的逻辑，保留)
-                # 或者可以直接抛出异常，取决于期望行为
-                raise  # Re-raise the exception to let the caller handle it
-                # Original code attempted to call again, which might not be ideal
-                # return _original_get_chat_completion(
-                #     messages,
-                #     model=model,
-                #     max_retries=max_retries,
-                #     initial_retry_delay=initial_retry_delay,
-                #     client_type=client_type,
-                #     api_key=api_key,
-                #     base_url=base_url
-                # )
-
-        # 应用猴子补丁
-        import src.tools.openrouter_config
-        src.tools.openrouter_config.get_chat_completion = patched_get_chat_completion
-
-        logger.info("✅ get_chat_completion拦截器应用成功")
-        return True
-    except Exception as e:
-        logger.error(f"应用get_chat_completion拦截器失败: {str(e)}")
-        return False
-
-
-# 在模块导入时尝试应用补丁
-try:
-    patch_result = patch_get_chat_completion()
-    if patch_result:
-        logger.info("LLM交互拦截器已准备就绪")
-    else:
-        logger.warning("LLM交互拦截器未能初始化，LLM请求和响应API可能无法工作")
-except Exception as e:
-    logger.error(f"初始化LLM交互拦截器时出错: {str(e)}")
-    # 不阻止其他功能初始化
 
 
 def agent_endpoint(agent_name: str, description: str = ""):

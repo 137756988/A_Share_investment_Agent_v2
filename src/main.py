@@ -25,11 +25,9 @@ from src.agents.debate_room import debate_room_agent
 
 # --- Logging and Backend Imports ---
 from src.utils.output_logger import OutputLogger
-# Import the original function and the module itself for patching
-import src.tools.openrouter_config
-from src.tools.openrouter_config import get_chat_completion as original_get_chat_completion
+# 导入原始函数，但不再进行猴子补丁
+from src.tools.openrouter_config import get_chat_completion
 from src.utils.llm_interaction_logger import (
-    wrap_llm_call,
     log_agent_execution,
     set_global_log_storage
 )
@@ -37,20 +35,20 @@ from backend.dependencies import get_log_storage
 from backend.main import app as fastapi_app  # Import the FastAPI app
 
 
-# --- Initialize Logging and Patching ---
+# --- Initialize Logging ---
 
 # 1. Initialize Log Storage
 log_storage = get_log_storage()
 set_global_log_storage(log_storage)  # Set storage in context for the wrapper
 
+# 移除猴子补丁逻辑
 # 2. Wrap the original LLM call function
-logged_get_chat_completion = wrap_llm_call(original_get_chat_completion)
+# logged_get_chat_completion = wrap_llm_call(original_get_chat_completion)
 
 # 3. Monkey-patch the function in its original module
-#    This ensures all agents importing it use the wrapped version.
-src.tools.openrouter_config.get_chat_completion = logged_get_chat_completion
+# src.tools.openrouter_config.get_chat_completion = logged_get_chat_completion
 # Optional: Confirmation message
-print("--- Patched get_chat_completion for logging ---")
+# print("--- Patched get_chat_completion for logging ---")
 
 # Initialize standard output logging
 # This will create a timestamped log file in the logs directory

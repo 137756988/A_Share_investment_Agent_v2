@@ -51,11 +51,11 @@ poetry run python src/main.py --ticker 000000 #修改成你想要测试的股票
 # 显示详细推理过程 - 查看每个智能体的分析过程
 poetry run python src/main.py --ticker 000000 --show-reasoning #修改成你想要测试的股票代码
 
-# 启动后端API服务
+# 启动后端API服务（适用于想要开发前端的用户）
 poetry run python run_with_backend.py
 ```
 
-最后一种方式会启动一个 API 服务，可以通过浏览器访问 http://localhost:8000/docs 来使用交互式 API 文档，轻松分析不同的股票。详细使用说明请参考[后端设计文档](docs/backend_design.md)。
+最后一种方式会启动一个 API 服务，可以通过浏览器访问 http://localhost:8000/docs 来使用交互式 API 文档，测试各接口功能。
 
 系统由以下几个协同工作的 agent 组成：
 
@@ -207,12 +207,7 @@ API 服务模式的优势：
 - 无需为每次分析重启程序
 - 可以直接根据该后端编写自己的前端界面
 
-3. **组合模式**
-
-```bash
-# 启动API服务并立即分析一支股票
-poetry run python run_with_backend.py --ticker 301155 --show-reasoning
-```
+有关后端 API 的详细结构、端点说明和数据示例，请参阅：[查看详细的后端 API 文档](./backend/README.md)
 
 ### 参数说明
 
