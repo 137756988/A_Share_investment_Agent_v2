@@ -124,7 +124,8 @@ class StructuredTerminalOutput:
                     sub_is_last = j == len(value) - 1
                     sub_prefix = SYMBOLS["tree_last"] if sub_is_last else SYMBOLS["tree_branch"]
                     if isinstance(item, dict):
-                        result.append(f"{indent_str}  {sub_prefix} 项目 {j+1}:")
+                        result.append(
+                            f"{indent_str}  {sub_prefix} Agent {j+1}:")
                         result.extend(
                             ["  " + line for line in self._format_dict_as_tree(item, indent + 2)])
                     else:
@@ -153,20 +154,79 @@ class StructuredTerminalOutput:
 
         # 添加内容
         if isinstance(data, dict):
-            # 提取信号和置信度（如果有）
-            if "signal" in data:
-                signal = data.get("signal", "")
-                signal_icon = STATUS_ICONS.get(signal.lower(), "")
-                result.append(
-                    f"{SYMBOLS['vertical']} 信号: {signal_icon} {signal}")
+            # 特殊处理portfolio_management_agent
+            if agent_name == "portfolio_management_agent":
+                # 尝试提取action和confidence
+                if "action" in data:
+                    action = data.get("action", "")
+                    action_icon = STATUS_ICONS.get(action.lower(), "")
+                    result.append(
+                        f"{SYMBOLS['vertical']} 交易行动: {action_icon} {action.upper() if action else ''}")
 
-            if "confidence" in data:
-                conf = data.get("confidence", "")
-                if isinstance(conf, (int, float)) and conf <= 1:
-                    conf_str = f"{conf*100:.0f}%"
-                else:
-                    conf_str = str(conf)
-                result.append(f"{SYMBOLS['vertical']} 置信度: {conf_str}")
+                if "quantity" in data:
+                    quantity = data.get("quantity", 0)
+                    result.append(f"{SYMBOLS['vertical']} 交易数量: {quantity}")
+
+                if "confidence" in data:
+                    conf = data.get("confidence", 0)
+                    if isinstance(conf, (int, float)) and conf <= 1:
+                        conf_str = f"{conf*100:.0f}%"
+                    else:
+                        conf_str = str(conf)
+                    result.append(f"{SYMBOLS['vertical']} 决策信心: {conf_str}")
+
+                # 显示各个Agent的信号
+                if "agent_signals" in data:
+                    result.append(
+                        f"{SYMBOLS['vertical']} {SYMBOLS['section_prefix']}各分析师意见:")
+
+                    for signal_info in data["agent_signals"]:
+                        agent = signal_info.get("agent", "")
+                        signal = signal_info.get("signal", "")
+                        conf = signal_info.get("confidence", 1.0)
+
+                        # 跳过空信号
+                        if not agent or not signal:
+                            continue
+
+                        # 获取信号图标
+                        signal_icon = STATUS_ICONS.get(signal.lower(), "")
+
+                        # 格式化置信度
+                        if isinstance(conf, (int, float)) and conf <= 1:
+                            conf_str = f"{conf*100:.0f}%"
+                        else:
+                            conf_str = str(conf)
+
+                        result.append(
+                            f"{SYMBOLS['vertical']}   • {agent}: {signal_icon} {signal} (置信度: {conf_str})")
+
+                # 决策理由
+                if "reasoning" in data:
+                    reasoning = data["reasoning"]
+                    result.append(
+                        f"{SYMBOLS['vertical']} {SYMBOLS['section_prefix']}决策理由:")
+                    if isinstance(reasoning, str):
+                        # 将长文本拆分为多行，每行不超过width-4个字符
+                        for i in range(0, len(reasoning), width-4):
+                            line = reasoning[i:i+width-4]
+                            result.append(f"{SYMBOLS['vertical']}   {line}")
+            else:
+                # 标准处理其他agent
+                # 提取信号和置信度（如果有）
+                if "signal" in data:
+                    signal = data.get("signal", "")
+                    signal_icon = STATUS_ICONS.get(signal.lower(), "")
+                    result.append(
+                        f"{SYMBOLS['vertical']} 信号: {signal_icon} {signal}")
+
+                if "confidence" in data:
+                    conf = data.get("confidence", "")
+                    if isinstance(conf, (int, float)) and conf <= 1:
+                        conf_str = f"{conf*100:.0f}%"
+                    else:
+                        conf_str = str(conf)
+                    result.append(f"{SYMBOLS['vertical']} 置信度: {conf_str}")
 
             # 添加其他数据
             tree_lines = self._format_dict_as_tree(data)
@@ -238,6 +298,29 @@ def extract_agent_data(state: Dict[str, Any], agent_name: str) -> Any:
     Returns:
         提取的agent数据
     """
+    # 特殊处理portfolio_management_agent
+    if agent_name == "portfolio_management_agent":
+        # 尝试从最后一条消息中获取数据
+        messages = state.get("messages", [])
+        if messages and hasattr(messages[-1], "content"):
+            content = messages[-1].content
+            # 尝试解析JSON
+            if isinstance(content, str):
+                try:
+                    # 如果是JSON字符串，尝试解析
+                    if content.strip().startswith('{') and content.strip().endswith('}'):
+                        return json.loads(content)
+                    # 如果是JSON字符串包含在其他文本中，尝试提取并解析
+                    json_start = content.find('{')
+                    json_end = content.rfind('}')
+                    if json_start >= 0 and json_end > json_start:
+                        json_str = content[json_start:json_end+1]
+                        return json.loads(json_str)
+                except json.JSONDecodeError:
+                    # 如果解析失败，返回原始内容
+                    return {"message": content}
+            return {"message": content}
+
     # 首先尝试从metadata中的all_agent_reasoning获取
     metadata = state.get("metadata", {})
     all_reasoning = metadata.get("all_agent_reasoning", {})
