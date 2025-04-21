@@ -34,6 +34,12 @@ from src.utils.llm_interaction_logger import (
 from backend.dependencies import get_log_storage
 from backend.main import app as fastapi_app  # Import the FastAPI app
 
+# --- Import Structured Terminal Output ---
+try:
+    from src.utils.structured_terminal import print_structured_output
+    HAS_STRUCTURED_OUTPUT = True
+except ImportError:
+    HAS_STRUCTURED_OUTPUT = False
 
 # --- Initialize Logging ---
 
@@ -56,7 +62,7 @@ sys.stdout = OutputLogger()
 
 
 # --- Run the Hedge Fund Workflow ---
-def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, portfolio: dict, show_reasoning: bool = False, num_of_news: int = 5):
+def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, portfolio: dict, show_reasoning: bool = False, num_of_news: int = 5, structured_output: bool = False):
     print(f"--- Starting Workflow Run ID: {run_id} ---")
 
     # 设置backend的run_id
@@ -83,6 +89,7 @@ def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, por
         "metadata": {
             "show_reasoning": show_reasoning,
             "run_id": run_id,  # Pass run_id in metadata
+            "structured_output": structured_output,  # 是否显示结构化输出
         }
     }
 
@@ -92,10 +99,18 @@ def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, por
         with workflow_run(run_id):
             final_state = app.invoke(initial_state)
             print(f"--- Finished Workflow Run ID: {run_id} ---")
+
+            # 如果启用了结构化输出，显示结构化输出
+            if HAS_STRUCTURED_OUTPUT and structured_output:
+                print_structured_output(final_state)
     except ImportError:
         # 如果未能导入，直接执行
         final_state = app.invoke(initial_state)
         print(f"--- Finished Workflow Run ID: {run_id} ---")
+
+        # 如果启用了结构化输出，显示结构化输出
+        if HAS_STRUCTURED_OUTPUT and structured_output:
+            print_structured_output(final_state)
 
         # 尝试更新API状态（如果可用）
         try:
@@ -190,6 +205,8 @@ if __name__ == "__main__":
                         help='Initial cash amount (default: 100,000)')
     parser.add_argument('--initial-position', type=int, default=0,
                         help='Initial stock position (default: 0)')
+    parser.add_argument('--structured-output', action='store_true',
+                        help='Show structured output with visual elements')
 
     args = parser.parse_args()
 
@@ -227,10 +244,13 @@ if __name__ == "__main__":
         end_date=end_date.strftime('%Y-%m-%d'),
         portfolio=portfolio,
         show_reasoning=args.show_reasoning,
-        num_of_news=args.num_of_news
+        num_of_news=args.num_of_news,
+        structured_output=args.structured_output
     )
-    print("\nFinal Result:")
-    print(result)
+    # 如果没有使用结构化输出，显示原始结果
+    if not args.structured_output:
+        print("\nFinal Result:")
+        print(result)
 
 # --- Historical Data Function (remains the same) ---
 
