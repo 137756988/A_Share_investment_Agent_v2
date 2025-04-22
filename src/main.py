@@ -34,6 +34,20 @@ from src.utils.llm_interaction_logger import (
 from backend.dependencies import get_log_storage
 from backend.main import app as fastapi_app  # Import the FastAPI app
 
+# --- Import Summary Report Generator ---
+try:
+    from src.utils.summary_report import print_summary_report
+    from src.utils.agent_collector import store_final_state, get_enhanced_final_state
+    HAS_SUMMARY_REPORT = True
+except ImportError:
+    HAS_SUMMARY_REPORT = False
+
+# --- Import Structured Terminal Output ---
+try:
+    from src.utils.structured_terminal import print_structured_output
+    HAS_STRUCTURED_OUTPUT = True
+except ImportError:
+    HAS_STRUCTURED_OUTPUT = False
 
 # --- Initialize Logging ---
 
@@ -56,7 +70,7 @@ sys.stdout = OutputLogger()
 
 
 # --- Run the Hedge Fund Workflow ---
-def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, portfolio: dict, show_reasoning: bool = False, num_of_news: int = 5):
+def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, portfolio: dict, show_reasoning: bool = False, num_of_news: int = 5, show_summary: bool = False):
     print(f"--- Starting Workflow Run ID: {run_id} ---")
 
     # 设置backend的run_id
@@ -83,6 +97,7 @@ def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, por
         "metadata": {
             "show_reasoning": show_reasoning,
             "run_id": run_id,  # Pass run_id in metadata
+            "show_summary": show_summary,  # 是否显示汇总报告
         }
     }
 
@@ -92,10 +107,36 @@ def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, por
         with workflow_run(run_id):
             final_state = app.invoke(initial_state)
             print(f"--- Finished Workflow Run ID: {run_id} ---")
+
+            # 在工作流结束后保存最终状态并生成汇总报告（如果启用）
+            if HAS_SUMMARY_REPORT and show_summary:
+                # 保存最终状态到收集器
+                store_final_state(final_state)
+                # 获取增强的最终状态（包含所有收集到的数据）
+                enhanced_state = get_enhanced_final_state()
+                # 打印汇总报告
+                print_summary_report(enhanced_state)
+
+            # 如果启用了显示推理，显示结构化输出
+            if HAS_STRUCTURED_OUTPUT and show_reasoning:
+                print_structured_output(final_state)
     except ImportError:
         # 如果未能导入，直接执行
         final_state = app.invoke(initial_state)
         print(f"--- Finished Workflow Run ID: {run_id} ---")
+
+        # 在工作流结束后保存最终状态并生成汇总报告（如果启用）
+        if HAS_SUMMARY_REPORT and show_summary:
+            # 保存最终状态到收集器
+            store_final_state(final_state)
+            # 获取增强的最终状态（包含所有收集到的数据）
+            enhanced_state = get_enhanced_final_state()
+            # 打印汇总报告
+            print_summary_report(enhanced_state)
+
+        # 如果启用了显示推理，显示结构化输出
+        if HAS_STRUCTURED_OUTPUT and show_reasoning:
+            print_structured_output(final_state)
 
         # 尝试更新API状态（如果可用）
         try:
@@ -190,6 +231,8 @@ if __name__ == "__main__":
                         help='Initial cash amount (default: 100,000)')
     parser.add_argument('--initial-position', type=int, default=0,
                         help='Initial stock position (default: 0)')
+    parser.add_argument('--summary', action='store_true',
+                        help='Show beautiful summary report at the end')
 
     args = parser.parse_args()
 
@@ -227,7 +270,8 @@ if __name__ == "__main__":
         end_date=end_date.strftime('%Y-%m-%d'),
         portfolio=portfolio,
         show_reasoning=args.show_reasoning,
-        num_of_news=args.num_of_news
+        num_of_news=args.num_of_news,
+        show_summary=args.summary
     )
     print("\nFinal Result:")
     print(result)
