@@ -26,6 +26,8 @@ def portfolio_management_agent(state: AgentState):
         msg for msg in state["messages"] if msg.name == "valuation_agent")
     risk_message = next(
         msg for msg in state["messages"] if msg.name == "risk_management_agent")
+    macro_message = next(
+        msg for msg in state["messages"] if msg.name == "macro_analyst_agent")
 
     # Create the system message
     system_message = {
@@ -40,29 +42,34 @@ def portfolio_management_agent(state: AgentState):
             - These are hard constraints that cannot be overridden by other signals
 
             When weighing the different signals for direction and timing:
-            1. Valuation Analysis (35% weight)
+            1. Valuation Analysis (30% weight)
                - Primary driver of fair value assessment
                - Determines if price offers good entry/exit point
-            
-            2. Fundamental Analysis (30% weight)
+
+            2. Fundamental Analysis (25% weight)
                - Business quality and growth assessment
                - Determines conviction in long-term potential
-            
-            3. Technical Analysis (25% weight)
+
+            3. Technical Analysis (20% weight)
                - Secondary confirmation
                - Helps with entry/exit timing
-            
-            4. Sentiment Analysis (10% weight)
+
+            4. Macro Analysis (15% weight)
+               - Provides broader economic context
+               - Helps assess external risks and opportunities
+
+            5. Sentiment Analysis (10% weight)
                - Final consideration
                - Can influence sizing within risk limits
-            
+
             The decision process should be:
             1. First check risk management constraints
             2. Then evaluate valuation signal
             3. Then evaluate fundamentals signal
-            4. Use technical analysis for timing
-            5. Consider sentiment for final adjustment
-            
+            4. Consider macro environment analysis
+            5. Use technical analysis for timing
+            6. Consider sentiment for final adjustment
+
             Provide the following in your output:
             - "action": "buy" | "sell" | "hold",
             - "quantity": <positive integer>
@@ -88,6 +95,7 @@ def portfolio_management_agent(state: AgentState):
             Sentiment Analysis Trading Signal: {sentiment_message.content}
             Valuation Analysis Trading Signal: {valuation_message.content}
             Risk Management Trading Signal: {risk_message.content}
+            Macro Analysis Trading Signal: {macro_message.content}
 
             Here is the current portfolio:
             Portfolio:
@@ -187,6 +195,8 @@ def format_decision(action: str, quantity: int, confidence: float, agent_signals
         (signal for signal in agent_signals if signal["agent_name"] == "sentiment_analysis"), None)
     risk_signal = next(
         (signal for signal in agent_signals if signal["agent_name"] == "risk_management"), None)
+    macro_signal = next(
+        (signal for signal in agent_signals if signal["agent_name"] == "macro_analysis"), None)
 
     # 转换信号为中文
     def signal_to_chinese(signal):
@@ -209,7 +219,7 @@ def format_decision(action: str, quantity: int, confidence: float, agent_signals
 1. 基本面分析 (权重30%):
    信号: {signal_to_chinese(fundamental_signal)}
    置信度: {fundamental_signal['confidence']*100:.0f}%
-   要点: 
+   要点:
    - 盈利能力: {fundamental_signal.get('reasoning', {}).get('profitability_signal', {}).get('details', '无数据')}
    - 增长情况: {fundamental_signal.get('reasoning', {}).get('growth_signal', {}).get('details', '无数据')}
    - 财务健康: {fundamental_signal.get('reasoning', {}).get('financial_health_signal', {}).get('details', '无数据')}
@@ -228,13 +238,20 @@ def format_decision(action: str, quantity: int, confidence: float, agent_signals
    要点:
    - 趋势跟踪: ADX={technical_signal.get('strategy_signals', {}).get('trend_following', {}).get('metrics', {}).get('adx', '无数据'):.2f}
    - 均值回归: RSI(14)={technical_signal.get('strategy_signals', {}).get('mean_reversion', {}).get('metrics', {}).get('rsi_14', '无数据'):.2f}
-   - 动量指标: 
+   - 动量指标:
      * 1月动量={technical_signal.get('strategy_signals', {}).get('momentum', {}).get('metrics', {}).get('momentum_1m', '无数据'):.2%}
      * 3月动量={technical_signal.get('strategy_signals', {}).get('momentum', {}).get('metrics', {}).get('momentum_3m', '无数据'):.2%}
      * 6月动量={technical_signal.get('strategy_signals', {}).get('momentum', {}).get('metrics', {}).get('momentum_6m', '无数据'):.2%}
    - 波动性: {technical_signal.get('strategy_signals', {}).get('volatility', {}).get('metrics', {}).get('historical_volatility', '无数据'):.2%}
 
-4. 情绪分析 (权重10%):
+4. 宏观分析 (权重15%):
+   信号: {signal_to_chinese(macro_signal)}
+   置信度: {macro_signal['confidence']*100:.0f if macro_signal else 0}%
+   宏观环境: {macro_signal.get('macro_environment', '无数据')}
+   对股票影响: {macro_signal.get('impact_on_stock', '无数据')}
+   关键因素: {', '.join(macro_signal.get('key_factors', ['无数据']))}
+
+5. 情绪分析 (权重10%):
    信号: {signal_to_chinese(sentiment_signal)}
    置信度: {sentiment_signal['confidence']*100:.0f}%
    分析: {sentiment_signal.get('reasoning', '无详细分析')}

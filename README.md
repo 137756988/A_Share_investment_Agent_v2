@@ -22,17 +22,22 @@
 
 ## 系统架构
 
-![System Architecture V2](src/data/img/structure_v2.png)
+![System Architecture V2](src/data/img/structure_v3.png)
 
 新版本的架构做出了以下改进：
 
 1. 引入了多头研究员(Researcher Bull)和空头研究员(Researcher Bear)，让系统能够从不同角度分析市场
 2. 增加了辩论室(Debate Room)环节，通过多空双方的辩论来达成更全面的决策
 3. 优化了数据流向，使决策过程更加系统化和完整
+4. 引入了宏观分析师(Macro Analyst)，分析宏观经济环境对目标股票的影响
 
 另外，优化了终端输出，减少了不必要的详细数据显示，使输出更加清晰易读
 
-## 最新功能：辩论室智能增强
+## 最新功能：
+
+### 2025.04.27 宏观分析师
+
+### 2025.03.27 辩论室智能增强
 
 我们最新升级了辩论室(Debate Room)模块的决策机制：
 
@@ -64,8 +69,12 @@ poetry run python run_with_backend.py
 3. Sentiment Agent - 分析市场情绪并生成交易信号
 4. Fundamentals Agent - 分析基本面数据并生成交易信号
 5. Technical Analyst - 分析技术指标并生成交易信号
-6. Risk Manager - 计算风险指标并设置仓位限制
-7. Portfolio Manager - 制定最终交易决策并生成订单
+6. Researcher Bull - 多头研究员，提供看涨观点
+7. Researcher Bear - 空头研究员，提供看跌观点
+8. Debate Room - 辩论室，综合多空观点
+9. Risk Manager - 计算风险指标并设置仓位限制
+10. Macro Analyst - 分析宏观经济环境对目标股票的影响
+11. Portfolio Manager - 制定最终交易决策并生成订单
 
 ## 免责声明
 
@@ -338,6 +347,7 @@ A_Share_investment_Agent/
 │   │   ├── __init__.py
 │   │   ├── debate_room.py
 │   │   ├── fundamentals.py
+│   │   ├── macro_analyst.py       # 宏观分析师Agent
 │   │   ├── market_data.py
 │   │   ├── portfolio_manager.py
 │   │   ├── researcher_bear.py
@@ -349,8 +359,9 @@ A_Share_investment_Agent/
 │   │   └── valuation.py
 │   ├── data/                   # 数据存储目录 (本地缓存等)
 │   │   ├── img/                # 项目图片
-│   │   ├── sentiment_cache.json
-│   │   └── stock_news/
+│   │   ├── sentiment_cache.json  # 情感分析结果缓存
+│   │   ├── macro_analysis_cache.json  # 宏观分析结果缓存
+│   │   └── stock_news/         # 股票新闻数据
 │   ├── tools/                  # 工具和功能模块 (LLM, 数据获取)
 │   │   ├── __init__.py
 │   │   ├── api.py
@@ -364,7 +375,9 @@ A_Share_investment_Agent/
 │   │   ├── llm_interaction_logger.py
 │   │   ├── logging_config.py
 │   │   ├── output_logger.py
-│   │   └── serialization.py
+│   │   ├── serialization.py
+│   │   ├── structured_terminal.py  # 结构化终端输出
+│   │   └── summary_report.py    # 汇总报告生成
 │   ├── backtester.py          # 回测系统 (可能需要检查状态)
 │   └── main.py                # Agent 工作流定义和命令行入口
 ├── logs/                      # 日志文件目录 (主要由 OutputLogger 生成)
@@ -422,7 +435,7 @@ A_Share_investment_Agent/
 本项目是一个基于多个 agent 的 AI 投资系统，采用模块化设计，每个 agent 都有其专门的职责。系统的架构如下：
 
 ```
-Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst] → Risk Manager → Portfolio Manager → Trading Decision
+Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst] → [Researcher Bull/Researcher Bear] → Debate Room → Risk Manager → Macro Analyst → Portfolio Manager → Trading Decision
 ```
 
 #### Agent 角色和职责
@@ -458,18 +471,47 @@ Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst] →
    - 评估股票的内在价值
    - 生成基于估值的交易信号
 
-6. **Risk Manager**
+6. **Researcher Bull**
+
+   - 从多头角度分析市场
+   - 寻找股票的投资机会和优势
+   - 提供看涨观点和论据
+   - 生成多头研究报告
+
+7. **Researcher Bear**
+
+   - 从空头角度分析市场
+   - 识别股票的风险和劣势
+   - 提供看跌观点和论据
+   - 生成空头研究报告
+
+8. **Debate Room**
+
+   - 综合多空双方的观点
+   - 通过辩论形式评估不同观点
+   - 权衡各种因素的影响
+   - 生成综合分析结果
+
+9. **Risk Manager**
 
    - 整合所有 agent 的交易信号
    - 评估潜在风险
    - 设定交易限制和风险控制参数
    - 生成风险管理信号
 
-7. **Portfolio Manager**
-   - 作为最终决策者
-   - 综合考虑所有信号和风险因素
-   - 做出最终的交易决策（买入/卖出/持有）
-   - 确保决策符合风险管理要求
+10. **Macro Analyst**
+
+- 分析宏观经济环境对目标股票的影响
+- 获取并分析大量相关新闻（最多 100 条）
+- 评估宏观环境（积极/中性/消极）
+- 识别关键宏观因素及其对股票的影响
+
+11. **Portfolio Manager**
+
+- 作为最终决策者
+- 综合考虑所有信号和风险因素
+- 做出最终的交易决策（买入/卖出/持有）
+- 确保决策符合风险管理要求
 
 ### 数据流和处理
 
@@ -589,7 +631,26 @@ Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst] →
      - 进行 DCF 估值分析
      - 评估股票的内在价值
 
-3. **风险评估阶段**
+3. **研究与辩论阶段**
+
+   - Researcher Bull：
+
+     - 从多头角度分析市场数据
+     - 寻找投资机会和优势
+     - 提供看涨观点和论据
+
+   - Researcher Bear：
+
+     - 从空头角度分析市场数据
+     - 识别风险和劣势
+     - 提供看跌观点和论据
+
+   - Debate Room：
+     - 综合多空双方的观点
+     - 通过辩论形式评估不同观点
+     - 生成综合分析结果
+
+4. **风险评估阶段**
 
    Risk Manager 综合考虑多个维度：
 
@@ -598,7 +659,16 @@ Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst] →
    - 止损止盈水平设定
    - 投资组合风险控制
 
-4. **决策阶段**
+5. **宏观分析阶段**
+
+   Macro Analyst 分析宏观经济环境：
+
+   - 获取并分析大量相关新闻（最多 100 条）
+   - 评估宏观环境（积极/中性/消极）
+   - 识别关键宏观因素及其对股票的影响
+   - 生成宏观分析报告
+
+6. **决策阶段**
 
    Portfolio Manager 基于以下因素做出决策：
 
@@ -607,14 +677,15 @@ Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst] →
    - 投资组合状态和现金水平
    - 交易成本和流动性考虑
 
-5. **数据存储和缓存**
+7. **数据存储和缓存**
 
    - 情绪分析结果缓存在 `data/sentiment_cache.json`
+   - 宏观分析结果缓存在 `data/macro_analysis_cache.json`
    - 新闻数据保存在 `data/stock_news/` 目录
    - 日志文件按类型存储在 `logs/` 目录
    - API 调用记录实时写入日志
 
-6. **监控和反馈**
+8. **监控和反馈**
 
    - 所有 API 调用都有详细的日志记录
    - 每个 Agent 的分析过程可追踪
@@ -632,9 +703,10 @@ Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst] →
 2. **决策权重**
    Portfolio Manager 在做决策时考虑不同信号的权重：
 
-   - 估值分析：35%
-   - 基本面分析：30%
-   - 技术分析：25%
+   - 估值分析：30%
+   - 基本面分析：25%
+   - 技术分析：20%
+   - 宏观分析：15%
    - 情绪分析：10%
 
 3. **风险控制**
@@ -693,6 +765,38 @@ Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst] →
    - 提高数据处理效率
    - 优化决策算法
    - 增加并行处理能力
+
+### 宏观分析功能
+
+宏观分析师代理（Macro Analyst Agent）是系统中的重要组件，负责分析宏观经济环境对目标股票的潜在影响。
+
+#### 功能特点
+
+1. **大量新闻数据采集**
+
+   - 自动获取最多 100 条与目标股票相关的新闻
+   - 过滤最近 7 天内的新闻
+   - 支持多个新闻源
+
+2. **宏观环境分析**
+
+   - 使用先进的 AI 模型分析宏观经济环境
+   - 评估宏观环境：积极(positive)、中性(neutral)或消极(negative)
+   - 评估对目标股票的影响：利好(positive)、中性(neutral)或利空(negative)
+
+3. **关键因素识别**
+   - 识别 3-5 个最重要的宏观因素
+   - 分析这些因素对目标股票的影响
+   - 提供详细的推理过程
+   - 生成宏观分析报告
+
+#### 宏观分析考虑因素
+
+- **货币政策**：利率、准备金率、公开市场操作等
+- **财政政策**：政府支出、税收政策、补贴等
+- **产业政策**：行业规划、监管政策、环保要求等
+- **国际环境**：全球经济形势、贸易关系、地缘政治等
+- **市场情绪**：投资者信心、市场流动性、风险偏好等
 
 ### 情感分析功能
 

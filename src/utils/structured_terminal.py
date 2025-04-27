@@ -57,6 +57,7 @@ AGENT_MAP = {
     "researcher_bear_agent": {"icon": "🐻", "name": "空方研究"},
     "debate_room_agent": {"icon": "🗣️", "name": "辩论室分析"},
     "risk_management_agent": {"icon": "⚠️", "name": "风险管理"},
+    "macro_analyst_agent": {"icon": "🌍", "name": "宏观分析"},
     "portfolio_management_agent": {"icon": "📂", "name": "投资组合管理"}
 }
 
@@ -71,6 +72,7 @@ AGENT_ORDER = [
     "researcher_bear_agent",
     "debate_room_agent",
     "risk_management_agent",
+    "macro_analyst_agent",
     "portfolio_management_agent"
 ]
 
