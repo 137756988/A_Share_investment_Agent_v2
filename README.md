@@ -103,6 +103,8 @@ curl -sSL [https://install.python-poetry.org](https://install.python-poetry.org)
 
 ```bash
 poetry lock --no-update
+```
+
 ```bash
 poetry install
 ```
