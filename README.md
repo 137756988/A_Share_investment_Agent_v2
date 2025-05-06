@@ -373,7 +373,11 @@ A_Share_investment_Agent/
 
 ## 许可证
 
-本项目基于 MIT 许可证 - 详见 LICENSE 文件。
+本项目使用双重许可证：
+- 原始代码（来自[ai-hedge-fund](https://github.com/virattt/ai-hedge-fund)）采用MIT许可证
+- 由24mlight创建的修改和新增代码采用[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)许可证，禁止商业使用
+
+详细信息请参阅[LICENSE](LICENSE)文件。
 
 ## ☕️ 请作者喝杯咖啡
 
