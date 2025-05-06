@@ -718,18 +718,21 @@ Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst] →
 
 本项目修改自 [ai-hedge-fund](https://github.com/virattt/ai-hedge-fund.git)。我们衷心感谢原作者的出色工作和启发。原项目为我们针对 A 股市场的适配和改进提供了坚实的基础。
 
-## 许可证
+## 许可证 / License
 
 本项目使用双重许可证：
 
-### 原始代码 - MIT许可证
-- 原始代码（来自[ai-hedge-fund](https://github.com/virattt/ai-hedge-fund)）采用MIT许可证
-- 允许商业和非商业使用
+This project is dual-licensed:
 
-### 修改和新增代码 - 非商用软件许可证
-- 由24mlight创建的所有修改和新增代码采用非商用软件许可证
-- 允许非商业使用、修改和分发
-- 严格禁止任何商业用途
-- 必须保留原始版权声明和许可证声明
+### 原始代码 - MIT许可证 / Original Code - MIT License
+- 原始代码（来自 [ai-hedge-fund](https://github.com/virattt/ai-hedge-fund)）采用 MIT 许可证。
+- 允许商业和非商业使用、修改和分发。
 
-详细信息请参阅[LICENSE](LICENSE)文件。
+### 修改和新增代码 - GNU GPL v3 with Non-Commercial Clause
+- 由 24mlight 创建的所有修改和新增代码采用 GNU General Public License v3 (GPL v3)，并附加非商业条款。
+- 允许非商业使用、修改和分发，需提供源代码。
+- 严格禁止任何商业用途（如商业产品、服务、销售或获取商业利益）。
+- 必须保留原始版权声明和许可证声明。
+- 衍生作品必须以相同许可证（GPL v3 with Non-Commercial Clause）分发。
+
+详细信息请参阅 [LICENSE](LICENSE) 文件。  
