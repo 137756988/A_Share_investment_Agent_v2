@@ -29,7 +29,7 @@
 <table>
   <tr>
     <td align="center"><img src="https://img.icons8.com/fluency/48/null/people-working-together.png" width="30px"/><br><b>多智能体协同</b></td>
-    <td align="center"><img src="https://img.icons8.com/fluency/48/neural-network.png" width="30px"/><br><b>LLM 深度分析</b></td>
+    <td align="center"><img src="https://img.icons8.com/?size=100&id=M1bt3ZHCANRW&format=png&color=000000" width="30px"/><br><b>LLM 深度分析</b></td>
     <td align="center"><img src="https://img.icons8.com/fluency/48/null/scales.png" width="30px"/><br><b>辩论室机制</b></td>
     <td align="center"><img src="https://img.icons8.com/fluency/48/null/data-configuration.png" width="30px"/><br><b>模块化架构</b></td>
   </tr>
