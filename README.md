@@ -757,8 +757,8 @@ This project is dual-licensed:
 * 必须保留原始版权声明和许可证声明。
 * 衍生作品必须以相同许可证（GPL v3 with Non-Commercial Clause）分发。
 
-详细信息请参阅 `LICENSE` 文件 (如果项目中有)。
+详细信息请参阅 `LICENSE` 文件。
 
 <div align="center">
-<img src="[https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=40,30,20,10&section=footer&height=100&animation=fadeIn](https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=40,30,20,10&section=footer&height=100&animation=fadeIn)" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12,15,20,24&section=footer&height=100&animation=fadeIn" />
 </div>
