@@ -378,9 +378,7 @@ A_Share_investment_Agent/
 <img src="src/data/img/ali.png" alt="支付宝收款码" width="300"/>
 
 ### 🌟 加入我们的社区
-
-=======
-同时也欢迎关注我们的公众号【空指针指向量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！ 🚀
+同时也欢迎关注我们的公众号【空指针指向量化 Agent】，获取更多量化投资和 AI 智能交易相关的干货内容！
 
 <div style="display: flex; justify-content: space-between;">
     <div style="text-align: center; margin-right: 20px;">
