@@ -34,7 +34,7 @@
     <td align="center"><img src="https://img.icons8.com/fluency/48/null/data-configuration.png" width="30px"/><br><b>模块化架构</b></td>
   </tr>
   <tr>
-    <td>模拟多空研究员，从不同视角分析市场</td>
+    <td>在多分析师基础上，引入多空研究员，从不同视角分析市场</td>
     <td>引入大型语言模型进行客观评估和洞察生成</td>
     <td>通过多方辩论达成更全面的决策</td>
     <td>各 Agent 独立运作，易于扩展和维护</td>
