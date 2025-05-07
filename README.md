@@ -13,14 +13,6 @@
 
 **⚠️ 免责声明：本项目仅用于教育和研究目的，不构成任何投资建议或适用于实际交易。投资有风险，决策需谨慎。**
 
-> 加入我的知识星球（一顿饭钱：99¥）
-（微信号: PareidoliaX，加微信后，我拉你进星球.该微信只做邀请用途，不做任何私人回复。非加星球请勿扰。）
-星球会提前更新代码，而且有独家解析和资料。
-
-本项目无需任何费用，知识星球是我个人社区，欢迎加入交个朋友。
-
-
-
 <div align="center">
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" width="100%">
 </div>
