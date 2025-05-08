@@ -22,6 +22,7 @@ from src.agents.fundamentals import fundamentals_agent
 from src.agents.researcher_bull import researcher_bull_agent
 from src.agents.researcher_bear import researcher_bear_agent
 from src.agents.debate_room import debate_room_agent
+from src.agents.macro_analyst import macro_analyst_agent
 
 # --- Logging and Backend Imports ---
 from src.utils.output_logger import OutputLogger
@@ -162,6 +163,7 @@ workflow.add_node("researcher_bull_agent", researcher_bull_agent)
 workflow.add_node("researcher_bear_agent", researcher_bear_agent)
 workflow.add_node("debate_room_agent", debate_room_agent)
 workflow.add_node("risk_management_agent", risk_management_agent)
+workflow.add_node("macro_analyst_agent", macro_analyst_agent)
 workflow.add_node("portfolio_management_agent", portfolio_management_agent)
 
 # Define the workflow edges (remain unchanged)
@@ -191,8 +193,11 @@ workflow.add_edge("researcher_bear_agent", "debate_room_agent")
 # Debate Room to Risk Management
 workflow.add_edge("debate_room_agent", "risk_management_agent")
 
-# Risk Management to Portfolio Management
-workflow.add_edge("risk_management_agent", "portfolio_management_agent")
+# Risk Management to Macro Analyst
+workflow.add_edge("risk_management_agent", "macro_analyst_agent")
+
+# Macro Analyst to Portfolio Management
+workflow.add_edge("macro_analyst_agent", "portfolio_management_agent")
 workflow.add_edge("portfolio_management_agent", END)
 
 # Compile the workflow graph
