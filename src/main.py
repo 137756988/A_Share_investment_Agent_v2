@@ -23,6 +23,7 @@ from src.agents.researcher_bull import researcher_bull_agent
 from src.agents.researcher_bear import researcher_bear_agent
 from src.agents.debate_room import debate_room_agent
 from src.agents.macro_analyst import macro_analyst_agent
+from src.agents.report_analyzer import report_analyzer_agent  # 添加财务报告分析助手
 
 # --- Logging and Backend Imports ---
 from src.utils.output_logger import OutputLogger
@@ -71,7 +72,7 @@ sys.stdout = OutputLogger()
 
 
 # --- Run the Hedge Fund Workflow ---
-def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, portfolio: dict, show_reasoning: bool = False, num_of_news: int = 5, show_summary: bool = False):
+def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, portfolio: dict, show_reasoning: bool = False, num_of_news: int = 5, show_summary: bool = False, generate_report: bool = True):
     print(f"--- Starting Workflow Run ID: {run_id} ---")
 
     # 设置backend的run_id
@@ -99,6 +100,7 @@ def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, por
             "show_reasoning": show_reasoning,
             "run_id": run_id,  # Pass run_id in metadata
             "show_summary": show_summary,  # 是否显示汇总报告
+            "generate_report": generate_report,  # 是否生成中文解析报告
         }
     }
 
@@ -165,6 +167,7 @@ workflow.add_node("debate_room_agent", debate_room_agent)
 workflow.add_node("risk_management_agent", risk_management_agent)
 workflow.add_node("macro_analyst_agent", macro_analyst_agent)
 workflow.add_node("portfolio_management_agent", portfolio_management_agent)
+workflow.add_node("report_analyzer_agent", report_analyzer_agent)  # 添加财务报告分析助手节点
 
 # Define the workflow edges (remain unchanged)
 workflow.set_entry_point("market_data_agent")
@@ -198,7 +201,23 @@ workflow.add_edge("risk_management_agent", "macro_analyst_agent")
 
 # Macro Analyst to Portfolio Management
 workflow.add_edge("macro_analyst_agent", "portfolio_management_agent")
-workflow.add_edge("portfolio_management_agent", END)
+
+# Portfolio Management to Report Analyzer 或 END
+# 添加条件路由：如果需要生成报告则进入报告分析节点，否则直接结束
+def router(state: AgentState):
+    # 检查元数据中是否设置了generate_report标志
+    if state.get('metadata', {}).get('generate_report', True):
+        return "report_analyzer_agent"
+    else:
+        return END
+
+workflow.add_conditional_edges(
+    "portfolio_management_agent",
+    router
+)
+
+# 报告分析器到结束
+workflow.add_edge("report_analyzer_agent", END)
 
 # Compile the workflow graph
 app = workflow.compile()
@@ -238,6 +257,8 @@ if __name__ == "__main__":
                         help='Initial stock position (default: 0)')
     parser.add_argument('--summary', action='store_true',
                         help='Show beautiful summary report at the end')
+    parser.add_argument('--no-report', action='store_true',
+                        help='Disable automatic generation of Chinese analysis report')
 
     args = parser.parse_args()
 
@@ -248,38 +269,43 @@ if __name__ == "__main__":
         datetime.strptime(args.end_date, '%Y-%m-%d'), yesterday)
 
     if not args.start_date:
+        # Default to 1 year before end date
         start_date = end_date - timedelta(days=365)
     else:
         start_date = datetime.strptime(args.start_date, '%Y-%m-%d')
 
-    if start_date > end_date:
-        raise ValueError("Start date cannot be after end date")
-    if args.num_of_news < 1:
-        raise ValueError("Number of news articles must be at least 1")
-    if args.num_of_news > 100:
-        raise ValueError("Number of news articles cannot exceed 100")
+    # Format dates
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
 
-    # --- Portfolio Setup (remains the same) ---
+    # --- Portfolio Initialization (remains the same) ---
     portfolio = {
         "cash": args.initial_capital,
         "stock": args.initial_position
     }
 
-    # --- Execute Workflow ---
-    # Generate run_id here when running directly
-    main_run_id = str(uuid.uuid4())
-    result = run_hedge_fund(
-        run_id=main_run_id,  # Pass the generated run_id
+    # 是否生成中文分析报告
+    generate_report = not args.no_report
+
+    # --- Run the Workflow (with run_id) ---
+    run_id = str(uuid.uuid4())  # Generate a UUID
+    messages = run_hedge_fund(
+        run_id=run_id,
         ticker=args.ticker,
-        start_date=start_date.strftime('%Y-%m-%d'),
-        end_date=end_date.strftime('%Y-%m-%d'),
+        start_date=start_date_str,
+        end_date=end_date_str,
         portfolio=portfolio,
         show_reasoning=args.show_reasoning,
         num_of_news=args.num_of_news,
-        show_summary=args.summary
+        show_summary=args.summary,
+        generate_report=generate_report
     )
-    print("\nFinal Result:")
-    print(result)
+
+    # Print final message
+    print("\n" + "="*70)
+    print("FINAL DECISION:")
+    print(messages)
+    print("="*70)
 
 # --- Historical Data Function (remains the same) ---
 

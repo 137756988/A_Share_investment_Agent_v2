@@ -8,6 +8,7 @@
 """
 
 import json
+import os
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
@@ -15,7 +16,7 @@ from datetime import datetime
 from src.utils.logging_config import setup_logger
 
 # 设置日志记录器
-logger = setup_logger('structured_terminal')
+logger = logging.getLogger('structured_terminal')
 
 # 格式化符号
 SYMBOLS = {
@@ -84,10 +85,23 @@ class StructuredTerminalOutput:
         """初始化"""
         self.data = {}
         self.metadata = {}
+        self._file_handler = None
+        self._ticker = None
 
     def set_metadata(self, key: str, value: Any) -> None:
         """设置元数据"""
         self.metadata[key] = value
+        # 如果设置了ticker，更新日志文件名
+        if key == "ticker" and value:
+            self._ticker = value
+            
+    def get_log_file_path(self) -> str:
+        """获取日志文件路径"""
+        ticker_suffix = f"_{self._ticker}" if self._ticker else ""
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))), 'logs')
+        os.makedirs(log_dir, exist_ok=True)
+        return os.path.join(log_dir, f"structured_terminal{ticker_suffix}.log")
 
     def add_agent_data(self, agent_name: str, data: Any) -> None:
         """添加agent数据"""
@@ -279,9 +293,24 @@ class StructuredTerminalOutput:
         return "\n".join(result)
 
     def print_output(self) -> None:
-        """打印格式化输出"""
+        """打印格式化输出并保存到文件"""
         output = self.generate_output()
-        # 使用INFO级别记录，确保在控制台可见
+        
+        # 自定义文件处理器以添加股票代码后缀
+        log_file_path = self.get_log_file_path()
+        
+        # 创建文件目录（如果不存在）
+        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+        
+        # 将输出写入文件
+        try:
+            with open(log_file_path, 'w', encoding='utf-8') as f:
+                f.write(output)
+            logger.info(f"✓ 结构化报告已保存至 {log_file_path}")
+        except Exception as e:
+            logger.error(f"保存结构化报告失败: {e}")
+        
+        # 使用INFO级别记录到控制台
         logger.info("\n" + output)
 
 
