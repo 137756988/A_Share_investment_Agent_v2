@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from .routers import logs, runs
 # 导入新增的路由器
-from .routers import agents, workflow, analysis, api_runs
+from .routers import agents, workflow, analysis, api_runs, user_queries
 
 # Create FastAPI app instance
 app = FastAPI(
@@ -35,6 +35,7 @@ app.include_router(agents.router)
 app.include_router(workflow.router)
 app.include_router(analysis.router)
 app.include_router(api_runs.router)
+app.include_router(user_queries.router)
 
 # 根端点API导航
 
@@ -51,7 +52,8 @@ def read_root():
                     "代理": "/api/agents/",
                     "分析": "/api/analysis/",
                     "运行": "/api/runs/",
-                    "工作流": "/api/workflow/"
+                    "工作流": "/api/workflow/",
+                    "查询": "/query/"
                 }
             },
             "旧API": {
@@ -74,7 +76,8 @@ def api_navigation():
             "/api/agents": "获取各个Agent的状态和数据",
             "/api/analysis": "启动和查询股票分析任务",
             "/api/runs": "查询运行历史和状态(基于api_state)",
-            "/api/workflow": "获取当前工作流状态"
+            "/api/workflow": "获取当前工作流状态",
+            "/query": "处理用户查询，根据意图识别决定处理流程"
         },
         "legacy_api": {
             "/logs": "查询历史LLM交互日志",

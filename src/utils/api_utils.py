@@ -8,7 +8,8 @@ API工具模块 - 提供Agent共享的API功能组件
 """
 
 from fastapi import APIRouter
-from backend.main import app  # Restore this import
+# 修改导入方式，避免直接导入
+# from backend.main import app  # Restore this import
 import json  # Keep - Used implicitly?
 import logging
 import functools
@@ -25,6 +26,9 @@ import uvicorn  # Used in start_api_server
 # import builtins # Unused
 import sys
 import io
+
+# 导入agent_endpoint装饰器
+from src.utils.agent_decorators import agent_endpoint
 
 # 导入重构后的模块
 from backend.models.api_models import (
@@ -84,7 +88,18 @@ _agent_llm_calls = {}
 # FastAPI应用
 # -----------------------------------------------------------------------------
 
-# 从backend中导入FastAPI应用
+# 改为动态导入FastAPI应用
+app = None
+def get_app():
+    """动态获取FastAPI应用实例，避免循环导入"""
+    global app
+    if app is None:
+        try:
+            from backend.main import app as fastapi_app
+            app = fastapi_app
+        except ImportError:
+            logger.warning("无法导入FastAPI应用，API功能可能不可用")
+    return app
 
 # 这些路由器不再使用，仅为向后兼容性保留定义
 agents_router = APIRouter(tags=["Agents"])
@@ -248,185 +263,6 @@ def log_llm_interaction(state):
     return decorator
 
 
-def agent_endpoint(agent_name: str, description: str = ""):
-    """
-    为Agent创建API端点的装饰器
-
-    用法:
-    @agent_endpoint("sentiment")
-    def sentiment_agent(state: AgentState) -> AgentState:
-        ...
-    """
-    def decorator(agent_func):
-        # 注册Agent
-        api_state.register_agent(agent_name, description)
-
-        # 初始化此agent的LLM调用跟踪
-        _agent_llm_calls[agent_name] = False
-
-        @functools.wraps(agent_func)
-        def wrapper(state):
-            # 更新Agent状态为运行中
-            api_state.update_agent_state(agent_name, "running")
-
-            # 添加当前agent名称到状态元数据
-            if "metadata" not in state:
-                state["metadata"] = {}
-            state["metadata"]["current_agent_name"] = agent_name
-
-            # 确保run_id在元数据中，这对日志记录至关重要
-            run_id = state.get("metadata", {}).get("run_id")
-            # 记录输入状态
-            timestamp_start = datetime.now(UTC)
-            serialized_input = serialize_agent_state(state)
-            api_state.update_agent_data(
-                agent_name, "input_state", serialized_input)
-
-            result = None
-            error = None
-            terminal_outputs = []  # Capture terminal output
-
-            # Capture stdout/stderr and logs during agent execution
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
-            log_stream = io.StringIO()
-            log_handler = logging.StreamHandler(log_stream)
-            log_handler.setLevel(logging.INFO)
-            root_logger = logging.getLogger()
-            root_logger.addHandler(log_handler)
-
-            redirect_stdout = io.StringIO()
-            redirect_stderr = io.StringIO()
-            sys.stdout = redirect_stdout
-            sys.stderr = redirect_stderr
-
-            try:
-                # --- 执行Agent核心逻辑 ---
-                # 直接调用原始 agent_func
-                result = agent_func(state)
-                # --------------------------
-
-                timestamp_end = datetime.now(UTC)
-
-                # 恢复标准输出/错误
-                sys.stdout = old_stdout
-                sys.stderr = old_stderr
-                root_logger.removeHandler(log_handler)
-
-                # 获取捕获的输出
-                stdout_content = redirect_stdout.getvalue()
-                stderr_content = redirect_stderr.getvalue()
-                log_content = log_stream.getvalue()
-                if stdout_content:
-                    terminal_outputs.append(stdout_content)
-                if stderr_content:
-                    terminal_outputs.append(stderr_content)
-                if log_content:
-                    terminal_outputs.append(log_content)
-
-                # 序列化输出状态
-                serialized_output = serialize_agent_state(result)
-                api_state.update_agent_data(
-                    agent_name, "output_state", serialized_output)
-
-                # 从状态中提取推理细节（如果有）
-                reasoning_details = None
-                if result.get("metadata", {}).get("show_reasoning", False):
-                    if "agent_reasoning" in result.get("metadata", {}):
-                        reasoning_details = result["metadata"]["agent_reasoning"]
-                        api_state.update_agent_data(
-                            agent_name,
-                            "reasoning",
-                            reasoning_details
-                        )
-
-                # 更新Agent状态为已完成
-                api_state.update_agent_state(agent_name, "completed")
-
-                # --- 添加Agent执行日志到BaseLogStorage ---
-                try:
-                    if _has_log_system:
-                        log_storage = get_log_storage()
-                        if log_storage:
-                            log_entry = AgentExecutionLog(
-                                agent_name=agent_name,
-                                run_id=run_id,
-                                timestamp_start=timestamp_start,
-                                timestamp_end=timestamp_end,
-                                input_state=serialized_input,
-                                output_state=serialized_output,
-                                reasoning_details=reasoning_details,
-                                terminal_outputs=terminal_outputs
-                            )
-                            log_storage.add_agent_log(log_entry)
-                            logger.debug(
-                                f"已将Agent执行日志保存到存储: {agent_name}, run_id: {run_id}")
-                        else:
-                            logger.warning(
-                                f"无法获取日志存储实例，跳过Agent执行日志记录: {agent_name}")
-                except Exception as log_err:
-                    logger.error(
-                        f"保存Agent执行日志到存储失败: {agent_name}, {str(log_err)}")
-                # -----------------------------------------
-
-                return result
-            except Exception as e:
-                # Record end time even on error
-                timestamp_end = datetime.now(UTC)
-                error = str(e)
-                # 恢复标准输出/错误
-                sys.stdout = old_stdout
-                sys.stderr = old_stderr
-                root_logger.removeHandler(log_handler)
-                # 获取捕获的输出
-                stdout_content = redirect_stdout.getvalue()
-                stderr_content = redirect_stderr.getvalue()
-                log_content = log_stream.getvalue()
-                if stdout_content:
-                    terminal_outputs.append(stdout_content)
-                if stderr_content:
-                    terminal_outputs.append(stderr_content)
-                if log_content:
-                    terminal_outputs.append(log_content)
-
-                # 更新Agent状态为错误
-                api_state.update_agent_state(agent_name, "error")
-                # 记录错误信息
-                api_state.update_agent_data(agent_name, "error", error)
-
-                # --- 添加错误日志到BaseLogStorage ---
-                try:
-                    if _has_log_system:
-                        log_storage = get_log_storage()
-                        if log_storage:
-                            log_entry = AgentExecutionLog(
-                                agent_name=agent_name,
-                                run_id=run_id,
-                                timestamp_start=timestamp_start,
-                                timestamp_end=timestamp_end,
-                                input_state=serialized_input,
-                                output_state={"error": error},
-                                reasoning_details=None,
-                                terminal_outputs=terminal_outputs
-                            )
-                            log_storage.add_agent_log(log_entry)
-                            logger.debug(
-                                f"已将Agent错误日志保存到存储: {agent_name}, run_id: {run_id}")
-                        else:
-                            logger.warning(
-                                f"无法获取日志存储实例，跳过Agent错误日志记录: {agent_name}")
-                except Exception as log_err:
-                    logger.error(
-                        f"保存Agent错误日志到存储失败: {agent_name}, {str(log_err)}")
-                # --------------------------------------
-
-                # 重新抛出异常
-                raise
-
-        return wrapper
-    return decorator
-
-
 # 启动API服务器的函数
 def start_api_server(host="0.0.0.0", port=8000, stop_event=None):
     """在独立线程中启动API服务器"""
@@ -447,24 +283,22 @@ def start_api_server(host="0.0.0.0", port=8000, stop_event=None):
             # 在后台检查stop_event
             while not stop_event.is_set():
                 time.sleep(0.5)
-            # 当stop_event被设置时，请求服务器退出
-            logger.info("收到停止信号，正在关闭API服务器...")
+            # 当stop_event被设置，发送中断信号
+            logger.info("检测到stop_event被设置，正在中断服务器...")
             server.should_exit = True
 
-        # 启动stop_event监听线程
-        stop_monitor = threading.Thread(
-            target=check_stop_event,
-            daemon=True
-        )
-        stop_monitor.start()
+        # 启动监听线程
+        stop_listener = threading.Thread(
+            target=check_stop_event, daemon=True)
+        stop_listener.start()
 
-        # 运行服务器（阻塞调用，但会响应should_exit标志）
+        # 启动服务器（这是阻塞的，但在stop_event设置时会被中断）
         try:
             server.run()
         except KeyboardInterrupt:
-            # 如果还是收到了KeyboardInterrupt，确保我们的stop_event也被设置
-            stop_event.set()
-        logger.info("API服务器已关闭")
+            logger.info("捕获到KeyboardInterrupt，正在关闭服务器...")
+        finally:
+            logger.info("服务器已关闭")
     else:
-        # 默认方式启动，不支持外部停止控制但仍响应Ctrl+C
+        # 无优雅关闭的标准启动模式
         uvicorn.run(app, host=host, port=port, log_config=None)

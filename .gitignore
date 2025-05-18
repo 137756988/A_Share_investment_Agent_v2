@@ -73,3 +73,6 @@ cache/
 
 # temp
 temp/
+
+# output_model
+/src/intent_detection/output_model

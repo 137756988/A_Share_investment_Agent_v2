@@ -9,10 +9,14 @@
     # 启动后端并立即执行分析
     poetry run python run_with_backend.py --ticker 002848 --show-reasoning
     
+    # 启动后端并使用查询文本（将基于意图识别执行不同流程）
+    poetry run python run_with_backend.py --query "什么是P/E比率？它如何影响投资决策？"
+    
 此脚本会:
 1. 默认仅启动FastAPI后端服务在 http://localhost:8000
-2. 当提供--ticker参数时，同时执行与 src/main.py 相同的功能
-3. 可通过API端点访问执行过程中的详细信息
+2. 当提供--ticker参数时，执行股票分析流程
+3. 当提供--query参数时，通过意图识别决定执行知识查询或股票分析
+4. 可通过API端点访问执行过程中的详细信息
 """
 
 import os
@@ -31,7 +35,8 @@ from src.utils.api_utils import start_api_server
 from backend.utils.context_managers import workflow_run
 
 # 导入原始main.py的关键组件
-from src.main import run_hedge_fund
+# 避免循环导入，在需要时再导入
+# from src.main import run_hedge_fund, process_user_query
 
 # 控制后端服务停止的全局标志
 stop_event = threading.Event()
@@ -62,6 +67,8 @@ def run_with_backend():
     )
     parser.add_argument('--ticker', type=str,
                         help='股票代码 (如果提供，将同时执行分析)')
+    parser.add_argument('--query', type=str,
+                        help='用户查询文本，将基于意图识别执行不同流程')
     parser.add_argument('--start-date', type=str,
                         help='开始日期 (YYYY-MM-DD)，默认为结束日期前一年')
     parser.add_argument('--end-date', type=str,
@@ -74,6 +81,12 @@ def run_with_backend():
                         help='初始资金 (默认: 100,000)')
     parser.add_argument('--initial-position', type=int, default=0,
                         help='初始持仓数量 (默认: 0)')
+    parser.add_argument('--summary', action='store_true',
+                        help='在结束时显示汇总报告')
+    parser.add_argument('--no-report', action='store_true',
+                        help='禁用自动生成中文分析报告')
+    parser.add_argument('--non-interactive', action='store_true',
+                        help='非交互式模式：自动选择股票名称的第一个匹配项')
 
     # 额外的后端服务配置参数
     parser.add_argument('--backend-host', type=str, default="0.0.0.0",
@@ -87,6 +100,8 @@ def run_with_backend():
     print("\n" + "="*70)
     if args.ticker:
         print(f"🤖 A股投资Agent系统 (带API后端) - 分析股票: {args.ticker}")
+    elif args.query:
+        print(f"🤖 A股投资Agent系统 (带API后端) - 处理查询: {args.query}")
     else:
         print(f"🤖 A股投资Agent系统 (仅API后端模式)")
     print("="*70)
@@ -106,8 +121,38 @@ def run_with_backend():
     run_id = None
     result = None
 
+    # 生成唯一运行ID
+    run_id = str(uuid.uuid4())
+    
+    # 如果提供了查询参数，使用意图识别处理
+    if args.query:
+        print(f"\n🔍 开始处理用户查询... (运行ID: {run_id})")
+        
+        # 使用workflow_run上下文管理器
+        try:
+            with workflow_run(run_id):
+                # 在此处导入，避免循环导入
+                from src.main import process_user_query
+                # 调用处理用户查询的函数
+                result = process_user_query(
+                    run_id=run_id,
+                    query=args.query,
+                    show_reasoning=args.show_reasoning
+                )
+            
+            # 显示结果
+            print("\n🔍 处理结果:")
+            if isinstance(result, dict) and "messages" in result and result["messages"]:
+                last_message = result["messages"][-1].content
+                print(last_message)
+            else:
+                print("处理查询时出现错误，没有返回有效的响应。")
+        except Exception as e:
+            print(f"\n❌ 处理查询时出错: {str(e)}")
+            print("请确保所有依赖项都已正确安装，特别是BERT模型相关的依赖。")
+    
     # 如果提供了ticker参数，执行分析
-    if args.ticker:
+    elif args.ticker:
         # 处理日期参数，与原始main.py保持一致
         current_date = datetime.now()
         yesterday = current_date - timedelta(days=1)
@@ -133,24 +178,30 @@ def run_with_backend():
             "stock": args.initial_position
         }
 
-        # 生成唯一运行ID
-        run_id = str(uuid.uuid4())
+        # 是否生成中文分析报告
+        generate_report = not args.no_report
 
         # 执行对冲基金逻辑（使用workflow_run上下文管理器）
         print(f"\n📊 开始执行投资分析... (运行ID: {run_id})")
         with workflow_run(run_id):
+            # 在此处导入，避免循环导入
+            from src.main import run_hedge_fund
             result = run_hedge_fund(
+                run_id=run_id,
                 ticker=args.ticker,
                 start_date=start_date.strftime('%Y-%m-%d'),
                 end_date=end_date.strftime('%Y-%m-%d'),
                 portfolio=portfolio,
                 show_reasoning=args.show_reasoning,
-                num_of_news=args.num_of_news
+                num_of_news=args.num_of_news,
+                show_summary=args.summary,
+                generate_report=generate_report
             )
 
         # 显示结果
         print("\n🔍 最终分析结果:")
-        print(result)
+        last_message = result["messages"][-1].content if result["messages"] else "没有决策"
+        print(last_message)
 
     # 提示API访问信息
     print("\n" + "-"*70)
@@ -160,6 +211,7 @@ def run_with_backend():
         print(f"📝 可通过API查看Agent执行历史和推理过程")
         print(f"🆔 本次运行ID: {run_id}")
     print(f"🔄 可通过 POST /analysis/start 接口触发新的股票分析")
+    print(f"🔄 可通过 POST /query/process 接口处理用户查询")
     print("-"*70)
 
     # 保持程序运行，让后端服务继续提供服务

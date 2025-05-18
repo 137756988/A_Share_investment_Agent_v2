@@ -25,6 +25,10 @@ from src.agents.researcher_bear import researcher_bear_agent
 from src.agents.debate_room import debate_room_agent
 from src.agents.macro_analyst import macro_analyst_agent
 from src.agents.report_analyzer import report_analyzer_agent  # 添加财务报告分析助手
+from src.agents.knowledge_query import knowledge_query_agent  # 添加金融知识查询助手
+
+# --- 添加意图识别工具 ---
+from src.utils.intent_detector import detect_intent
 
 # --- Logging and Backend Imports ---
 from src.utils.output_logger import OutputLogger
@@ -35,7 +39,8 @@ from src.utils.llm_interaction_logger import (
     set_global_log_storage
 )
 from backend.dependencies import get_log_storage
-from backend.main import app as fastapi_app  # Import the FastAPI app
+# 移除这行直接导入
+# from backend.main import app as fastapi_app  # Import the FastAPI app
 
 # --- Import Summary Report Generator ---
 try:
@@ -262,11 +267,186 @@ def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, por
     return final_state["messages"][-1].content
 
 
-# --- Define the Workflow Graph ---
+# --- 新增功能: 处理用户查询，根据意图执行不同的流程 ---
+def process_user_query(run_id: str, query: str, show_reasoning: bool = False) -> AgentState:
+    """
+    处理用户查询，根据意图识别结果执行不同的流程
+    
+    Args:
+        run_id: 运行ID
+        query: 用户查询
+        show_reasoning: 是否显示推理过程
+        
+    Returns:
+        AgentState: 最终状态
+    """
+    print(f"\n=== 开始处理用户查询 [ID: {run_id[:8]}] ===")
+    print(f"📝 用户查询: '{query}'")
+    
+    try:
+        # 识别用户意图
+        print("🔍 正在识别意图...")
+        intent_result = detect_intent(query)
+        intent = intent_result["intent"]
+        print(f"✅ 成功识别意图: {intent}")
+        
+        # 打印详细的意图识别结果
+        print(f"🔹 原始文本: {intent_result['text']}")
+        print(f"🔹 领域: {intent_result['domain']}")
+        
+        # 如果有槽位信息，也打印出来
+        if "slots" in intent_result and intent_result["slots"]:
+            print("🔹 识别到的槽位信息:")
+            for slot_name, slot_values in intent_result["slots"].items():
+                if isinstance(slot_values, list):
+                    slot_value = ", ".join(slot_values)
+                else:
+                    slot_value = slot_values
+                print(f"  - {slot_name}: {slot_value}")
+    except Exception as e:
+        # 意图识别失败时记录错误并返回错误消息
+        print(f"❌ 意图识别失败: {str(e)}")
+        print("⚠️ 将尝试使用备用方法判断意图...")
+        
+        # 简单的备份判断逻辑：如果包含股票、基金等关键词，可能是股票分析
+        stock_keywords = ["股票", "基金", "投资", "涨跌", "买入", "卖出", "持有", "市值", 
+                         "估值", "分析", "趋势", "技术面", "基本面", "短线", "长线"]
+        
+        is_likely_stock_query = any(keyword in query for keyword in stock_keywords)
+        
+        if is_likely_stock_query:
+            intent = "STOCK_ANALYSIS"
+            print(f"✓ 备用判断结果: 可能是股票分析查询")
+        else:
+            intent = "KNOWLEDGE_QUERY"
+            print(f"✓ 备用判断结果: 可能是金融知识查询")
+            
+        error_message = f"意图识别模型出错，已使用备用方法判断。原始错误: {str(e)}"
+        
+        # 构建错误响应
+        initial_state = {
+            "messages": [
+                HumanMessage(content=query)
+            ],
+            "data": {
+                "user_query": query,
+                "intent": intent,
+                "error": str(e)
+            },
+            "metadata": {
+                "show_reasoning": show_reasoning,
+                "run_id": run_id
+            }
+        }
+        
+        # 根据备用判断结果执行相应的逻辑
+        if intent == "KNOWLEDGE_QUERY":
+            return knowledge_query_agent(initial_state)
+        else:
+            return initial_state
+    
+    # 初始化状态
+    initial_state = {
+        "messages": [
+            HumanMessage(content=query)
+        ],
+        "data": {
+            "user_query": query,
+            "intent": intent
+        },
+        "metadata": {
+            "show_reasoning": show_reasoning,
+            "run_id": run_id
+        }
+    }
+    
+    # 根据意图执行不同的流程
+    if intent == "KNOWLEDGE_QUERY":
+        print("\n🧠 执行金融知识查询流程")
+        # 直接调用金融知识查询助手
+        try:
+            print("⏳ 正在处理知识查询，这可能需要一些时间...")
+            final_state = knowledge_query_agent(initial_state)
+            print("✅ 知识查询处理完成")
+        except Exception as e:
+            # 处理知识查询中的错误
+            print(f"❌ 知识查询处理失败: {str(e)}")
+            error_message = f"知识查询处理失败: {str(e)}"
+            messages = initial_state["messages"]
+            messages.append(HumanMessage(content=error_message))
+            final_state = {
+                "messages": messages,
+                "data": initial_state["data"],
+                "metadata": initial_state["metadata"]
+            }
+    else:  # STOCK_ANALYSIS 或其他默认为股票分析
+        print("\n📊 执行股票分析流程")
+        # 提取可能的股票代码或名称
+        try:
+            # 尝试从查询中提取股票代码或名称
+            print("🔍 尝试从查询中识别股票...")
+            
+            # 如果有槽位信息，尝试从中提取股票信息
+            stock_name = None
+            if "slots" in intent_result and intent_result["slots"]:
+                if "stock_name" in intent_result["slots"]:
+                    stock_name = intent_result["slots"]["stock_name"]
+                    print(f"✓ 从槽位中识别到股票: {stock_name}")
+            
+            # 如果没有从槽位中获取到，尝试从整个查询中提取
+            if not stock_name:
+                # 这里简化处理，直接使用整个查询
+                stock_name = query
+                print(f"⚠️ 无法从槽位中识别股票，将使用整个查询文本")
+            
+            # 解析股票代码
+            ticker = resolve_stock_input(stock_name, non_interactive=True)
+            print(f"✅ 识别到股票代码: {ticker}")
+            
+            # 设置当前日期和日期范围
+            current_date = datetime.now()
+            yesterday = current_date - timedelta(days=1)
+            end_date = yesterday
+            start_date = end_date - timedelta(days=365)
+            
+            # 更新状态
+            initial_state["data"]["ticker"] = ticker
+            initial_state["data"]["start_date"] = start_date.strftime('%Y-%m-%d')
+            initial_state["data"]["end_date"] = end_date.strftime('%Y-%m-%d')
+            initial_state["data"]["portfolio"] = {
+                "cash": 100000.0,
+                "stock": 0
+            }
+            initial_state["data"]["num_of_news"] = 5
+            initial_state["metadata"]["generate_report"] = True
+            
+            print(f"\n🚀 开始执行股票分析工作流")
+            print(f"📅 分析时间范围: {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
+            print(f"⏳ 分析进行中，这可能需要几分钟时间...")
+            
+            # 调用股票分析流程
+            final_state = app.invoke(initial_state)
+            print(f"✅ 股票分析完成")
+        except Exception as e:
+            # 如果提取股票失败，返回错误消息
+            print(f"❌ 股票分析处理失败: {str(e)}")
+            error_message = f"无法识别有效的股票代码或名称: {str(e)}。请提供明确的股票代码或名称进行分析。"
+            messages = initial_state["messages"]
+            messages.append(HumanMessage(content=error_message))
+            final_state = {
+                "messages": messages,
+                "data": initial_state["data"],
+                "metadata": initial_state["metadata"]
+            }
+    
+    print(f"=== 用户查询处理完成 [ID: {run_id[:8]}] ===\n")
+    return final_state
+
+
+# --- Create the LangGraph StateGraph ---
 workflow = StateGraph(AgentState)
 
-# Add nodes - Remove explicit log_agent_execution calls
-# The @agent_endpoint decorator now handles logging to BaseLogStorage
+# Add nodes
 workflow.add_node("market_data_agent", market_data_agent)
 workflow.add_node("technical_analyst_agent", technical_analyst_agent)
 workflow.add_node("fundamentals_agent", fundamentals_agent)
@@ -278,9 +458,10 @@ workflow.add_node("debate_room_agent", debate_room_agent)
 workflow.add_node("risk_management_agent", risk_management_agent)
 workflow.add_node("macro_analyst_agent", macro_analyst_agent)
 workflow.add_node("portfolio_management_agent", portfolio_management_agent)
-workflow.add_node("report_analyzer_agent", report_analyzer_agent)  # 添加财务报告分析助手节点
+workflow.add_node("report_analyzer_agent", report_analyzer_agent)  # 财务报告分析助手节点
+workflow.add_node("knowledge_query_agent", knowledge_query_agent)  # 金融知识查询助手节点
 
-# Define the workflow edges (remain unchanged)
+# Define the workflow edges
 workflow.set_entry_point("market_data_agent")
 
 # Market Data to Analysts
@@ -316,7 +497,12 @@ workflow.add_edge("macro_analyst_agent", "portfolio_management_agent")
 # Portfolio Management to Report Analyzer 或 END
 # 添加条件路由：如果需要生成报告则进入报告分析节点，否则直接结束
 def router(state: AgentState):
-    # 检查元数据中是否设置了generate_report标志
+    # 首先检查是否为知识查询意图
+    intent = state.get('data', {}).get('intent')
+    if intent == "KNOWLEDGE_QUERY":
+        return "knowledge_query_agent"
+    
+    # 然后检查元数据中是否设置了generate_report标志
     if state.get('metadata', {}).get('generate_report', True):
         return "report_analyzer_agent"
     else:
@@ -327,8 +513,9 @@ workflow.add_conditional_edges(
     router
 )
 
-# 报告分析器到结束
+# 报告分析器和知识查询到结束
 workflow.add_edge("report_analyzer_agent", END)
+workflow.add_edge("knowledge_query_agent", END)
 
 # Compile the workflow graph
 app = workflow.compile()
@@ -336,76 +523,142 @@ app = workflow.compile()
 
 # --- FastAPI Background Task ---
 def run_fastapi():
-    print("--- Starting FastAPI server in background (port 8000) ---")
-    # Note: Change host/port/log_level as needed
-    # Disable Uvicorn's own logging config to avoid conflicts with app's logging
-    uvicorn.run(fastapi_app, host="0.0.0.0", port=8000, log_config=None)
+    """启动FastAPI服务器作为后台任务"""
+    try:
+        from backend.main import app as fastapi_app
+        print("--- Starting FastAPI server in background (port 8000) ---")
+        # Note: Change host/port/log_level as needed
+        # Disable Uvicorn's own logging config to avoid conflicts with app's logging
+        uvicorn.run(fastapi_app, host="0.0.0.0", port=8000, log_config=None)
+    except ImportError as e:
+        print(f"注意: 无法启动FastAPI服务: {e}")
 
 
-# --- Main Execution Block ---
-if __name__ == "__main__":
-    # Start FastAPI server in a background thread
-    fastapi_thread = threading.Thread(target=run_fastapi, daemon=True)
-    fastapi_thread.start()
+# --- 添加新函数: 封装主程序逻辑 ---
+def run_main():
+    """
+    封装主程序逻辑，作为模块入口点
+    """
+    # 尝试启动 FastAPI 服务（后台）
+    try:
+        from backend.main import app as fastapi_app  # 仅在需要时导入
+        fastapi_thread = threading.Thread(target=run_fastapi, daemon=True)
+        fastapi_thread.start()
+        print("✅ FastAPI服务已在后台启动")
+    except ImportError as e:
+        print(f"注意: FastAPI服务未启动 - {e}")
 
-    # --- Argument Parsing (remains the same) ---
+    # --- 参数解析 ---
     parser = argparse.ArgumentParser(
-        description='Run the hedge fund trading system')
-    # ... (keep existing parser arguments) ...
-    parser.add_argument('--ticker', type=str, required=True,
-                        help='Stock ticker symbol or stock name')
-    parser.add_argument('--start-date', type=str,
-                        help='Start date (YYYY-MM-DD). Defaults to 1 year before end date')
-    parser.add_argument('--end-date', type=str,
-                        help='End date (YYYY-MM-DD). Defaults to yesterday')
-    parser.add_argument('--show-reasoning', action='store_true',
-                        help='Show reasoning from each agent')
-    parser.add_argument('--num-of-news', type=int, default=5,
-                        help='Number of news articles to analyze for sentiment (default: 5)')
-    parser.add_argument('--initial-capital', type=float, default=100000.0,
-                        help='Initial cash amount (default: 100,000)')
-    parser.add_argument('--initial-position', type=int, default=0,
-                        help='Initial stock position (default: 0)')
-    parser.add_argument('--summary', action='store_true',
-                        help='Show beautiful summary report at the end')
-    parser.add_argument('--no-report', action='store_true',
-                        help='Disable automatic generation of Chinese analysis report')
-    parser.add_argument('--non-interactive', action='store_true',
-                        help='Non-interactive mode: automatically select the first match for stock names')
+        description='A股投资助手 - 支持股票分析和金融知识查询')
+    
+    # 支持两种模式
+    mode_group = parser.add_argument_group('运行模式 (二选一)')
+    mode_group.add_argument('--ticker', type=str,
+                        help='股票代码或名称 (股票分析模式)')
+    mode_group.add_argument('--query', type=str,
+                        help='用户查询文本 (会使用意图识别决定处理流程)')
+    
+    # 股票分析相关参数
+    stock_group = parser.add_argument_group('股票分析选项')
+    stock_group.add_argument('--start-date', type=str,
+                        help='开始日期 (YYYY-MM-DD)，默认为结束日期前一年')
+    stock_group.add_argument('--end-date', type=str,
+                        help='结束日期 (YYYY-MM-DD)，默认为昨天')
+    stock_group.add_argument('--num-of-news', type=int, default=5,
+                        help='用于情感分析的新闻文章数量 (默认: 5)')
+    stock_group.add_argument('--initial-capital', type=float, default=100000.0,
+                        help='初始资金金额 (默认: 100,000)')
+    stock_group.add_argument('--initial-position', type=int, default=0,
+                        help='初始股票持仓数量 (默认: 0)')
+    stock_group.add_argument('--non-interactive', action='store_true',
+                        help='非交互模式: 自动选择股票名称的第一个匹配项')
+    stock_group.add_argument('--no-report', action='store_true',
+                        help='禁用自动生成中文分析报告')
+    
+    # 通用选项
+    common_group = parser.add_argument_group('通用选项')
+    common_group.add_argument('--show-reasoning', action='store_true',
+                        help='显示每个Agent的推理过程')
+    common_group.add_argument('--summary', action='store_true',
+                        help='在结束时显示汇总报告')
 
     args = parser.parse_args()
 
-    # --- 解析输入的股票代码或名称 ---
-    ticker = resolve_stock_input(args.ticker, non_interactive=args.non_interactive)
+    # 生成运行ID
+    run_id = str(uuid.uuid4())
+    print(f"\n=== 新会话开始 [ID: {run_id[:8]}] ===")
+    
+    # 判断运行模式
+    if args.query:
+        print(f"\n📝 处理用户查询: '{args.query}'")
+        print(f"🔍 正在识别意图...")
+        
+        # 使用process_user_query处理查询
+        final_state = process_user_query(
+            run_id=run_id,
+            query=args.query,
+            show_reasoning=args.show_reasoning
+        )
+        
+        # 提取意图和最终消息
+        intent = final_state.get("data", {}).get("intent", "未知")
+        print(f"✅ 识别意图: {intent}")
+        
+        # 打印最终消息
+        print("\n" + "="*70)
+        print("🤖 最终回复:")
+        last_message = final_state["messages"][-1].content if final_state["messages"] else "无回复"
+        print(last_message)
+        print("="*70 + "\n")
+        sys.exit(0)
+    
+    # 如果没有提供ticker和query，显示错误并退出
+    if not args.ticker:
+        print("❌ 错误: 必须提供 --ticker 或 --query 参数")
+        parser.print_help()
+        sys.exit(1)
 
-    # --- Date Handling (remains the same) ---
+    # --- 解析输入的股票代码或名称 ---
+    print(f"\n🔍 正在处理股票代码/名称: '{args.ticker}'")
+    ticker = resolve_stock_input(args.ticker, non_interactive=args.non_interactive)
+    print(f"✅ 确认股票代码: {ticker}")
+
+    # --- 日期处理 ---
     current_date = datetime.now()
     yesterday = current_date - timedelta(days=1)
     end_date = yesterday if not args.end_date else min(
         datetime.strptime(args.end_date, '%Y-%m-%d'), yesterday)
 
     if not args.start_date:
-        # Default to 1 year before end date
+        # 默认为结束日期前一年
         start_date = end_date - timedelta(days=365)
     else:
         start_date = datetime.strptime(args.start_date, '%Y-%m-%d')
 
-    # Format dates
+    # 格式化日期
     start_date_str = start_date.strftime('%Y-%m-%d')
     end_date_str = end_date.strftime('%Y-%m-%d')
+    print(f"📅 分析时间范围: {start_date_str} 至 {end_date_str}")
 
-    # --- Portfolio Initialization (remains the same) ---
+    # --- 投资组合初始化 ---
     portfolio = {
         "cash": args.initial_capital,
         "stock": args.initial_position
     }
+    print(f"💰 初始资金: {args.initial_capital}元，初始持仓: {args.initial_position}股")
 
     # 是否生成中文分析报告
     generate_report = not args.no_report
+    if generate_report:
+        print("📑 将生成中文分析报告")
+    else:
+        print("📑 已禁用中文分析报告")
 
-    # --- Run the Workflow (with run_id) ---
-    run_id = str(uuid.uuid4())  # Generate a UUID
-    messages = run_hedge_fund(
+    # --- 运行工作流 ---
+    print(f"\n🚀 开始执行股票分析工作流...")
+    
+    final_state = run_hedge_fund(
         run_id=run_id,
         ticker=ticker,
         start_date=start_date_str,
@@ -417,11 +670,18 @@ if __name__ == "__main__":
         generate_report=generate_report
     )
 
-    # Print final message
+    # 打印最终决策
     print("\n" + "="*70)
-    print("FINAL DECISION:")
-    print(messages)
+    print("🤖 最终决策:")
+    last_message = final_state if isinstance(final_state, str) else \
+                  final_state["messages"][-1].content if isinstance(final_state, dict) and final_state.get("messages") else "无决策"
+    print(last_message)
     print("="*70)
+    print(f"\n=== 会话结束 [ID: {run_id[:8]}] ===\n")
+
+# --- Main Execution Block ---
+if __name__ == "__main__":
+    run_main()
 
 # --- Historical Data Function (remains the same) ---
 
