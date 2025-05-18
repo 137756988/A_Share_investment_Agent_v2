@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 import argparse
 import uuid  # Import uuid for run IDs
@@ -69,6 +70,116 @@ set_global_log_storage(log_storage)  # Set storage in context for the wrapper
 # Initialize standard output logging
 # This will create a timestamped log file in the logs directory
 sys.stdout = OutputLogger()
+
+# --- 添加新函数: 判断输入是股票代码还是股票名称，并在需要时自动搜索股票代码 ---
+def resolve_stock_input(input_value, non_interactive=False):
+    """
+    判断输入是股票代码还是股票名称，并返回对应的股票代码
+    
+    Args:
+        input_value: 输入值，可能是股票代码或股票名称
+        non_interactive: 是否为非交互式环境，如果是则自动选择第一个匹配项
+        
+    Returns:
+        str: 股票代码
+    """
+    try:
+        # 获取A股股票代码和名称对照表
+        df = ak.stock_info_a_code_name()
+        
+        # 检查1: 是否为股票代码格式 (纯数字或字母数字组合，长度为6)
+        if input_value.isdigit() or (len(input_value) == 6 and input_value.isalnum()):
+            # 验证股票代码是否存在
+            if input_value in df['code'].values:
+                stock_name = df[df['code'] == input_value]['name'].values[0]
+                print(f"找到股票: {input_value} - {stock_name}")
+                return input_value
+            else:
+                print(f"警告: 股票代码 '{input_value}' 不存在于当前A股市场，请检查输入")
+        
+        # 检查2: 是否为精确的股票名称
+        exact_match = df[df['name'] == input_value]
+        if not exact_match.empty:
+            selected_ticker = exact_match.iloc[0]['code']
+            selected_name = exact_match.iloc[0]['name']
+            print(f"精确匹配股票: {selected_ticker} - {selected_name}")
+            return selected_ticker
+        
+        # 检查3: 模糊匹配股票名称
+        print(f"尝试模糊匹配股票名称: '{input_value}'")
+        # 根据名称模糊查询
+        result = df[df['name'].str.contains(input_value)]
+        
+        # 如果没有找到，尝试关键词搜索
+        if result.empty:
+            print(f"未找到包含 '{input_value}' 的股票名称，尝试关键词搜索...")
+            keywords = input_value.split()
+            for keyword in keywords:
+                if len(keyword) >= 2:  # 只搜索长度大于等于2的关键词
+                    result = df[df['name'].str.contains(keyword)]
+                    if not result.empty:
+                        print(f"通过关键词 '{keyword}' 找到相关股票")
+                        break
+        
+        # 处理搜索结果
+        if result.empty:
+            print(f"未找到与 '{input_value}' 匹配的股票，请使用有效的股票代码或名称")
+            sys.exit(1)
+        
+        # 显示匹配的股票列表
+        print("\n找到以下匹配的股票:")
+        for i, (_, row) in enumerate(result.iterrows()):
+            print(f"{i+1}. {row['code']} - {row['name']}")
+        
+        # 处理匹配结果
+        if len(result) == 1:
+            # 只有一个匹配项，自动选择
+            selected_ticker = result.iloc[0]['code']
+            selected_name = result.iloc[0]['name']
+            print(f"\n自动选择唯一匹配项: {selected_ticker} - {selected_name}")
+            return selected_ticker
+        
+        elif non_interactive:
+            # 非交互式模式下自动选择第一个匹配项
+            selected_ticker = result.iloc[0]['code']
+            selected_name = result.iloc[0]['name']
+            print(f"\n非交互模式: 自动选择第一个匹配项: {selected_ticker} - {selected_name}")
+            return selected_ticker
+        
+        else:
+            # 交互式选择
+            while True:
+                try:
+                    user_input = input("\n请选择要分析的股票编号 [1-{}]: ".format(len(result)))
+                    if not user_input:  # 如果输入为空，默认选择第一项
+                        selected_index = 0
+                        break
+                    
+                    selected_index = int(user_input) - 1
+                    if 0 <= selected_index < len(result):
+                        break
+                    else:
+                        print(f"请输入1到{len(result)}之间的数字")
+                except ValueError:
+                    print("请输入有效的数字")
+                except EOFError:
+                    # 处理EOF错误（可能在某些环境中发生）
+                    print("\n检测到EOF错误，自动选择第一个匹配项")
+                    selected_index = 0
+                    break
+                except KeyboardInterrupt:
+                    print("\n操作已取消")
+                    sys.exit(1)
+            
+            selected_ticker = result.iloc[selected_index]['code']
+            selected_name = result.iloc[selected_index]['name']
+            print(f"\n您选择了: {selected_ticker} - {selected_name}")
+            return selected_ticker
+        
+    except Exception as e:
+        print(f"搜索股票时出错: {e}")
+        print("请使用有效的股票代码或名称")
+        sys.exit(1)
 
 
 # --- Run the Hedge Fund Workflow ---
@@ -242,7 +353,7 @@ if __name__ == "__main__":
         description='Run the hedge fund trading system')
     # ... (keep existing parser arguments) ...
     parser.add_argument('--ticker', type=str, required=True,
-                        help='Stock ticker symbol')
+                        help='Stock ticker symbol or stock name')
     parser.add_argument('--start-date', type=str,
                         help='Start date (YYYY-MM-DD). Defaults to 1 year before end date')
     parser.add_argument('--end-date', type=str,
@@ -259,8 +370,13 @@ if __name__ == "__main__":
                         help='Show beautiful summary report at the end')
     parser.add_argument('--no-report', action='store_true',
                         help='Disable automatic generation of Chinese analysis report')
+    parser.add_argument('--non-interactive', action='store_true',
+                        help='Non-interactive mode: automatically select the first match for stock names')
 
     args = parser.parse_args()
+
+    # --- 解析输入的股票代码或名称 ---
+    ticker = resolve_stock_input(args.ticker, non_interactive=args.non_interactive)
 
     # --- Date Handling (remains the same) ---
     current_date = datetime.now()
@@ -291,7 +407,7 @@ if __name__ == "__main__":
     run_id = str(uuid.uuid4())  # Generate a UUID
     messages = run_hedge_fund(
         run_id=run_id,
-        ticker=args.ticker,
+        ticker=ticker,
         start_date=start_date_str,
         end_date=end_date_str,
         portfolio=portfolio,

@@ -7,6 +7,7 @@
 此脚本用于测试财务报告分析助手功能
 """
 
+import os
 import logging
 from src.agents.state import AgentState
 from src.agents.report_analyzer import report_analyzer_agent
@@ -25,10 +26,14 @@ def test_report_analyzer():
     print("开始测试财务报告分析助手...")
     print("=" * 50)
     
+    # 获取股票代码，优先从环境变量获取
+    ticker = os.environ.get("STOCK_TICKER", "301155")
+    print(f"分析股票代码: {ticker}")
+    
     # 创建测试状态 - 使用TypedDict的正确方式
     state = {
         "messages": [HumanMessage(content="测试报告分析")],
-        "data": {"ticker": "301155"},
+        "data": {"ticker": ticker},
         "metadata": {"show_reasoning": True}
     }
     

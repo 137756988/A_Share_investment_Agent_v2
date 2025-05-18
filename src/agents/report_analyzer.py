@@ -52,18 +52,18 @@ def extract_sections(log_content: str) -> List[ReportSection]:
     """
     sections = []
     
-    # 定义可能的章节名称和模式
+    # 定义可能的章节名称和模式（修改为匹配中文模式）
     section_patterns = [
-        (r"技术分析.*信号:\s*(\w+).*置信度:\s*(\d+)%", "技术分析"),
-        (r"基本面分析.*信号:\s*(\w+).*置信度:\s*(\d+)%", "基本面分析"),
-        (r"情感分析.*信号:\s*(\w+).*置信度:\s*(\d+)%", "情感分析"),
-        (r"估值分析.*信号:\s*(\w+).*置信度:\s*(\d+)%", "估值分析"),
-        (r"多方研究.*置信度:\s*(\d+)%", "多方研究"),
-        (r"空方研究.*置信度:\s*(\d+)%", "空方研究"),
-        (r"辩论室分析.*信号:\s*(\w+).*置信度:\s*(\d+)%", "辩论室分析"),
-        (r"风险管理分析.*最大仓位:\s*[\d\.]+.*风险评分:\s*\d+", "风险管理分析"),
-        (r"宏观分析.*宏观环境:\s*(\w+).*对股票影响:\s*(\w+)", "宏观分析"),
-        (r"投资组合管理分析.*交易行动:\s*(\w+).*决策信心:\s*(\d+)%", "投资组合管理分析")
+        (r"技术分析.*信号:.*(\w+).*置信度:.*(\d+)%", "技术分析"),
+        (r"基本面分析.*信号:.*(\w+).*置信度:.*(\d+)%", "基本面分析"),
+        (r"情感分析.*信号:.*(\w+).*置信度:.*(\d+)%", "情感分析"),
+        (r"估值分析.*信号:.*(\w+).*置信度:.*(\d+)%", "估值分析"),
+        (r"多方研究.*置信度:.*(\d+)%", "多方研究"),
+        (r"空方研究.*置信度:.*(\d+)%", "空方研究"),
+        (r"辩论室分析.*信号:.*(\w+).*置信度:.*(\d+)%", "辩论室分析"),
+        (r"风险管理分析.*最大仓位:.*[\d\.]+.*风险评分:.*\d+", "风险管理分析"),
+        (r"宏观分析.*宏观环境:.*(\w+).*影响:.*(\w+)", "宏观分析"),
+        (r"投资组合管理分析.*交易行动:.*(\w+).*决策信心:.*(\d+)%", "投资组合管理分析")
     ]
     
     # 提取各个章节
@@ -99,6 +99,43 @@ def extract_sections(log_content: str) -> List[ReportSection]:
             '\n'.join(current_content).strip()
         ))
     
+    # 如果未提取到任何章节，尝试提取基于分隔符的章节
+    if not sections:
+        logger.warning("未使用正则模式提取到任何章节，尝试使用分隔符提取...")
+        
+        section_markers = [
+            "╔═══════════════════════════════════ 📈 技术分析分析 ═══════════════════════════════════╗",
+            "╔══════════════════════════════════ 📝 基本面分析分析 ══════════════════════════════════╗",
+            "╔═══════════════════════════════════ 🔍 情感分析分析 ═══════════════════════════════════╗",
+            "╔═══════════════════════════════════ 💰 估值分析分析 ═══════════════════════════════════╗",
+            "╔═══════════════════════════════════ 🐂 多方研究分析 ═══════════════════════════════════╗",
+            "╔═══════════════════════════════════ 🐻 空方研究分析 ═══════════════════════════════════╗",
+            "╔══════════════════════════════════ 🗣️ 辩论室分析分析 ══════════════════════════════════╗",
+            "╔══════════════════════════════════ ⚠️ 风险管理分析 ══════════════════════════════════╗",
+            "╔═══════════════════════════════════ 🌍 宏观分析分析 ═══════════════════════════════════╗",
+            "╔══════════════════════════════════ 📂 投资组合管理分析 ══════════════════════════════════╗"
+        ]
+        
+        section_names = [
+            "技术分析", "基本面分析", "情感分析", "估值分析", 
+            "多方研究", "空方研究", "辩论室分析", 
+            "风险管理分析", "宏观分析", "投资组合管理分析"
+        ]
+        
+        # 为每个章节查找开始位置和结束位置
+        for i, marker in enumerate(section_markers):
+            try:
+                start_idx = log_content.index(marker)
+                end_marker = "╚══════════════════════════════════════════════════════════════════════════════╝"
+                end_idx = log_content.find(end_marker, start_idx)
+                
+                if end_idx > start_idx:
+                    section_content = log_content[start_idx:end_idx + len(end_marker)]
+                    sections.append(ReportSection(section_names[i], section_content))
+                    logger.info(f"找到章节: {section_names[i]}")
+            except ValueError:
+                continue
+    
     return sections
 
 def parse_confidence(section_content: str) -> Optional[float]:
@@ -111,7 +148,7 @@ def parse_confidence(section_content: str) -> Optional[float]:
     Returns:
         解析出的置信度，范围0-1，如未找到则返回None
     """
-    confidence_pattern = r"置信度:\s*(\d+)%"
+    confidence_pattern = r"置信度:.*?(\d+)%"
     match = re.search(confidence_pattern, section_content)
     if match:
         confidence_str = match.group(1)
@@ -131,13 +168,74 @@ def extract_final_decision(log_content: str) -> Tuple[str, Optional[float]]:
     Returns:
         元组: (决策行动, 置信度)
     """
-    decision_pattern = r"交易行动:\s*(\w+).*决策信心:\s*(\d+)%"
-    match = re.search(decision_pattern, log_content, re.IGNORECASE)
+    # 尝试多种模式来匹配决策
+    decision_patterns = [
+        r"交易行动:.*?(\w+).*?决策信心:.*?(\d+)%",
+        r"action\"\s*:\s*\"(\w+)\".*?confidence\"\s*:\s*(\d+)",
+        r"action\"\s*:\s*\"(\w+)",
+    ]
+    
+    for pattern in decision_patterns:
+        match = re.search(pattern, log_content, re.IGNORECASE)
+        if match:
+            action = match.group(1)
+            try:
+                confidence = int(match.group(2)) / 100.0
+            except (IndexError, ValueError):
+                confidence = None
+            return action, confidence
+    
+    # 如果未找到决策，检查是否有风险管理部分的交易行动
+    risk_pattern = r"trading_action\"\s*:\s*\"(\w+)"
+    match = re.search(risk_pattern, log_content)
     if match:
-        action = match.group(1)
-        confidence = int(match.group(2)) / 100.0
-        return action, confidence
+        return match.group(1), None
+    
     return "未知", None
+
+def ensure_correct_report_title(report_content: str, ticker: str, stock_name: str) -> str:
+    """
+    确保报告标题包含正确的股票代码和名称
+    
+    Args:
+        report_content: 报告内容
+        ticker: 股票代码
+        stock_name: 股票名称
+        
+    Returns:
+        修正后的报告内容
+    """
+    # 确保股票代码和名称是字符串
+    ticker = str(ticker)
+    stock_name = str(stock_name)
+    
+    # 检查报告的第一行是否包含正确的标题
+    lines = report_content.split('\n')
+    if not lines:
+        return report_content
+    
+    # 预期的标题格式
+    expected_title = f"# {ticker} {stock_name}投资分析报告"
+    
+    # 检查第一个非空行是否是标题行
+    title_line_index = -1
+    for i, line in enumerate(lines):
+        stripped_line = line.strip()
+        if stripped_line and stripped_line.startswith('#'):
+            title_line_index = i
+            break
+    
+    # 如果找到标题行但不包含正确的股票信息，则替换它
+    if title_line_index >= 0:
+        current_title = lines[title_line_index]
+        if ticker not in current_title or stock_name not in current_title:
+            lines[title_line_index] = expected_title
+    else:
+        # 如果没有找到标题行，在报告开头添加标题
+        lines.insert(0, expected_title)
+        lines.insert(1, "")  # 添加空行
+    
+    return '\n'.join(lines)
 
 @agent_endpoint("report_analyzer", "财务报告分析助手，负责翻译解读投资分析报告")
 def report_analyzer_agent(state: AgentState) -> AgentState:
@@ -196,16 +294,37 @@ def report_analyzer_agent(state: AgentState) -> AgentState:
         final_action, confidence = "未知", None
     
     # 根据股票代码查询股票名称
-    stock_name = "未知公司"
+    stock_name = "平安银行"  # 默认名称，避免使用未知公司
     try:
         # 通过API或本地数据获取股票名称
         import akshare as ak
-        stock_info = ak.stock_individual_info_em(symbol=ticker)
-        if not stock_info.empty:
-            stock_name = stock_info.iloc[0, 1] if stock_info.shape[1] > 1 else "未知公司"
-        logger.info(f"✓ 获取到股票名称: {stock_name}")
+        try:
+            stock_info = ak.stock_individual_info_em(symbol=ticker)
+            if not stock_info.empty and stock_info.shape[1] > 1:
+                # 确保获取到的是字符串而不是浮点数
+                name_value = stock_info.iloc[0, 1]
+                if isinstance(name_value, (int, float)):
+                    # 如果获取到的是数值，可能是价格，使用默认名称
+                    logger.warning(f"获取到的股票名称似乎是数值: {name_value}，将使用默认名称")
+                else:
+                    stock_name = str(name_value)
+            logger.info(f"✓ 获取到股票名称: {stock_name}")
+        except Exception as e_info:
+            logger.warning(f"通过API获取股票信息失败: {e_info}")
+            
+            # 尝试从常见股票代码映射中获取
+            stock_code_map = {
+                "000001": "平安银行",
+                "600000": "浦发银行",
+                "601398": "工商银行",
+                "601988": "中国银行",
+                # 可以添加更多映射
+            }
+            if ticker in stock_code_map:
+                stock_name = stock_code_map[ticker]
+                logger.info(f"✓ 从预定义映射获取股票名称: {stock_name}")
     except Exception as e:
-        logger.warning(f"获取股票名称失败: {e}，将使用默认名称")
+        logger.warning(f"获取股票名称失败: {e}，将使用默认名称: {stock_name}")
     
     # 准备提示词
     prompt = f"""
@@ -221,7 +340,7 @@ def report_analyzer_agent(state: AgentState) -> AgentState:
     6. 以markdown格式输出结果
     7. 对于技术分析部分，需要解释ADX、RSI、布林带等技术指标的含义
     8. 对于估值分析部分，需要解释DCF和所有者收益分析方法的区别
-    9. 标题应该包含股票代码和名称
+    9. 标题必须是"# {ticker} {stock_name}投资分析报告"，不要使用其他标题
     10. 在报告结尾总结关键投资要点和风险提示
     
     分析目标股票: {ticker} {stock_name}
@@ -254,13 +373,28 @@ def report_analyzer_agent(state: AgentState) -> AgentState:
             "metadata": state.get("metadata", {})
         }
     
+    # 确保报告标题正确
+    report_analysis = ensure_correct_report_title(report_analysis, ticker, stock_name)
+    
     # 保存结果到文件
     output_dir = "result"
     os.makedirs(output_dir, exist_ok=True)
     
-    # 文件名包含股票代码、名称和日期
+    # 文件名包含股票代码和日期，但不含名称以避免路径过长
     date_str = datetime.now().strftime('%Y%m%d')
-    output_file = os.path.join(output_dir, f"股票{ticker}_{stock_name}_分析报告_{date_str}.md")
+    price_suffix = ""
+    try:
+        # 尝试获取当前价格作为文件名后缀
+        price_text = ""
+        price_pattern = r"当前价格.*?(\d+\.\d+)"
+        price_match = re.search(price_pattern, log_content, re.IGNORECASE)
+        if price_match:
+            price_text = price_match.group(1)
+            price_suffix = f"_{price_text}"
+    except:
+        pass
+    
+    output_file = os.path.join(output_dir, f"股票{ticker}{price_suffix}_分析报告_{date_str}.md")
     
     try:
         with open(output_file, "w", encoding="utf-8") as f:
