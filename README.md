@@ -559,7 +559,7 @@ A_Share_investment_Agent_V2/
 <img src="[https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)" width="100%">
 </div>
 
-## ☕️ 支持与社区
+<!-- ## ☕️ 支持与社区
 
 如果这个项目对你有帮助，欢迎请我喝杯咖啡 ❤️
 
@@ -584,7 +584,7 @@ A_Share_investment_Agent_V2/
 
 <div align="center">
 <img src="[https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)" width="100%">
-</div>
+</div> -->
 
 ## 📖 项目详细说明
 
