@@ -191,7 +191,7 @@ def extract_final_decision(log_content: str) -> Tuple[str, Optional[float]]:
     if match:
         return match.group(1), None
     
-    return "未知", None
+    return "观望", None
 
 def ensure_correct_report_title(report_content: str, ticker: str, stock_name: str) -> str:
     """
@@ -208,6 +208,10 @@ def ensure_correct_report_title(report_content: str, ticker: str, stock_name: st
     # 确保股票代码和名称是字符串
     ticker = str(ticker)
     stock_name = str(stock_name)
+    
+    # 防止股票名称为空
+    if not stock_name:
+        stock_name = "股票"
     
     # 检查报告的第一行是否包含正确的标题
     lines = report_content.split('\n')
@@ -228,14 +232,47 @@ def ensure_correct_report_title(report_content: str, ticker: str, stock_name: st
     # 如果找到标题行但不包含正确的股票信息，则替换它
     if title_line_index >= 0:
         current_title = lines[title_line_index]
-        if ticker not in current_title or stock_name not in current_title:
+        # 检查标题中是否包含错误的股票代码或名称
+        wrong_stock_info = False
+        
+        # 使用正则表达式提取标题中的股票代码和名称
+        title_match = re.search(r'#\s*(\d{6})\s+([^\s]+)', current_title)
+        if title_match:
+            title_code = title_match.group(1)
+            title_name = title_match.group(2)
+            
+            # 如果标题中的股票代码不是当前股票代码，或者名称与当前不符（且当前名称不为"股票"）
+            if title_code != ticker or (title_name != stock_name and stock_name != "股票"):
+                wrong_stock_info = True
+                logger.warning(f"检测到标题中的股票信息错误: 标题={current_title}, 应为={expected_title}")
+        
+        # 如果标题本身不包含足够信息或信息错误，则替换整个标题
+        if wrong_stock_info or ticker not in current_title or (stock_name not in current_title and stock_name != "股票"):
             lines[title_line_index] = expected_title
+            logger.info(f"已修正报告标题为: {expected_title}")
     else:
         # 如果没有找到标题行，在报告开头添加标题
         lines.insert(0, expected_title)
         lines.insert(1, "")  # 添加空行
+        logger.info(f"已添加报告标题: {expected_title}")
     
-    return '\n'.join(lines)
+    # 检查内容中是否有平安银行等特定错误
+    corrected_content = '\n'.join(lines)
+    
+    # 检查并替换平安银行等特定错误
+    bank_names = ["平安银行", "工商银行", "中国银行", "浦发银行"]
+    for bank_name in bank_names:
+        if bank_name != stock_name and bank_name in corrected_content:
+            # 仅替换非引用文本中的错误（如替换"平安银行投资分析报告"，但不替换引号内的内容）
+            # 注意：替换前检查，确保不会误替换引用内容
+            corrected_content = re.sub(
+                r'([^"""\'\'\'「」『』\(（]\s*)' + bank_name + r'(\s*[^"""\'\'\'「」『』\)）]|$)', 
+                r'\1' + stock_name + r'\2', 
+                corrected_content
+            )
+            logger.info(f"已修正报告中的公司名称: {bank_name} -> {stock_name}")
+    
+    return corrected_content
 
 @agent_endpoint("report_analyzer", "财务报告分析助手，负责翻译解读投资分析报告")
 def report_analyzer_agent(state: AgentState) -> AgentState:
@@ -251,6 +288,10 @@ def report_analyzer_agent(state: AgentState) -> AgentState:
     # 获取股票代码
     ticker = state.get("data", {}).get("ticker", "未知股票")
     
+    # 直接从state中获取股票名称(如果有)
+    stock_name = state.get("data", {}).get("stock_name", "")
+    logger.info(f"从state中获取的股票名称: {stock_name}")
+    
     # 读取结构化日志文件（带有股票代码后缀）
     ticker_suffix = f"_{ticker}" if ticker else ""
     log_file_path = f"logs/structured_terminal{ticker_suffix}.log"
@@ -260,20 +301,60 @@ def report_analyzer_agent(state: AgentState) -> AgentState:
         with open(log_file_path, "r", encoding="utf-8") as f:
             log_content = f.read()
         logger.info(f"✓ 成功读取日志文件: {log_file_path}")
+        
+        # 检查日志内容中是否包含该股票的信息
+        # 如果日志中包含其他股票代码但不包含当前股票代码，可能使用了错误的日志文件
+        if ticker not in log_content and re.search(r'股票代码\s+\d{6}', log_content):
+            # 尝试提取日志中的股票代码
+            log_ticker_match = re.search(r'股票代码\s+(\d{6})', log_content)
+            if log_ticker_match:
+                log_ticker = log_ticker_match.group(1)
+                if log_ticker != ticker:
+                    logger.warning(f"⚠️ 警告: 日志文件中的股票代码 {log_ticker} 与当前分析的股票代码 {ticker} 不匹配")
+                    raise ValueError(f"日志文件内容与当前股票不匹配，日志中为 {log_ticker}，当前为 {ticker}")
     except Exception as e:
-        # 如果带后缀的文件不存在，尝试读取不带后缀的默认文件
-        default_log_path = "logs/structured_terminal.log"
-        logger.warning(f"读取带有股票代码后缀的日志文件失败: {e}，尝试读取默认日志文件")
+        # 如果带后缀的文件不存在或内容不匹配，尝试创建一个简化的日志内容
+        logger.warning(f"读取带有股票代码后缀的日志文件失败或内容不匹配: {e}")
+        
+        # 创建一个简单的日志内容模板，包含必要的字段但标记为"数据有限"
         try:
-            with open(default_log_path, "r", encoding="utf-8") as f:
-                log_content = f.read()
-            logger.info(f"✓ 成功读取默认日志文件: {default_log_path}")
+            logger.info(f"尝试创建简化的分析报告内容...")
+            
+            # 获取股票基本信息
+            import akshare as ak
+            stock_info = ""
+            try:
+                # 获取股票实时行情
+                realtime_data = ak.stock_zh_a_spot_em()
+                stock_row = realtime_data[realtime_data['代码'] == ticker]
+                if not stock_row.empty:
+                    price = stock_row.iloc[0]['最新价']
+                    change_pct = stock_row.iloc[0]['涨跌幅']
+                    volume = stock_row.iloc[0]['成交量']
+                    stock_info = f"当前价格: {price}, 涨跌幅: {change_pct}%, 成交量: {volume}"
+            except Exception as e_info:
+                logger.warning(f"获取股票实时行情失败: {e_info}")
+                stock_info = "无法获取实时行情"
+            
+            # 创建简化的日志内容
+            log_content = f"""
+════════════════════════════════════════════════════════════════════════════════
+                               股票代码 {ticker} 投资分析报告                               
+════════════════════════════════════════════════════════════════════════════════
+                         分析区间: {datetime.now().strftime('%Y-%m-%d')}                          
+
+请注意: 由于无法获取完整的分析日志，此报告仅包含有限的信息。
+股票基本信息: {stock_info}
+
+投资决策: 由于数据有限，无法给出明确的投资建议。请获取更多数据后再做决策。
+            """
+            logger.info(f"✓ 成功创建简化的分析报告内容")
         except Exception as e2:
-            logger.error(f"读取默认日志文件失败: {e2}")
+            logger.error(f"创建简化分析报告内容失败: {e2}")
             # 返回错误消息
             from langchain_core.messages import HumanMessage
             messages = state.get("messages", [])
-            messages.append(HumanMessage(content=f"无法读取分析报告日志，请确保先运行股票分析流程: {e2}"))
+            messages.append(HumanMessage(content=f"无法读取或创建分析报告内容，请确保先运行股票分析流程: {e}，{e2}"))
             return {
                 "messages": messages,
                 "data": state.get("data", {}),
@@ -291,40 +372,67 @@ def report_analyzer_agent(state: AgentState) -> AgentState:
     except Exception as e:
         logger.error(f"解析报告章节时出错: {e}")
         sections = []
-        final_action, confidence = "未知", None
+        final_action, confidence = "观望", None
     
-    # 根据股票代码查询股票名称
-    stock_name = "平安银行"  # 默认名称，避免使用未知公司
-    try:
-        # 通过API或本地数据获取股票名称
-        import akshare as ak
+    # 获取股票名称的优先级: 1.state传递 2.API获取 3.映射表 4.默认值
+    if not stock_name:
+        # 如果状态中没有股票名称，尝试从API获取
+        default_stock_name = "未知公司"  # 更改默认名称避免误导
         try:
-            stock_info = ak.stock_individual_info_em(symbol=ticker)
-            if not stock_info.empty and stock_info.shape[1] > 1:
-                # 确保获取到的是字符串而不是浮点数
-                name_value = stock_info.iloc[0, 1]
-                if isinstance(name_value, (int, float)):
-                    # 如果获取到的是数值，可能是价格，使用默认名称
-                    logger.warning(f"获取到的股票名称似乎是数值: {name_value}，将使用默认名称")
+            # 通过API或本地数据获取股票名称
+            import akshare as ak
+            try:
+                stock_info = ak.stock_individual_info_em(symbol=ticker)
+                if not stock_info.empty and stock_info.shape[1] > 1:
+                    # 确保获取到的是字符串而不是浮点数
+                    name_value = stock_info.iloc[0, 1]
+                    if isinstance(name_value, (int, float)):
+                        # 如果获取到的是数值，可能是价格，尝试其他方法
+                        logger.warning(f"获取到的股票名称似乎是数值: {name_value}，尝试其他方法")
+                    else:
+                        stock_name = str(name_value)
+                        logger.info(f"✓ 从API获取到股票名称: {stock_name}")
+            except Exception as e_info:
+                logger.warning(f"通过API获取股票信息失败: {e_info}，尝试使用映射表")
+                
+                # 尝试从常见股票代码映射中获取
+                stock_code_map = {
+                    "000001": "平安银行",
+                    "600000": "浦发银行",
+                    "601398": "工商银行",
+                    "601988": "中国银行",
+                    "600519": "贵州茅台",  # 添加贵州茅台
+                    "000858": "五粮液",     # 添加五粮液
+                    "601318": "中国平安",   # 添加中国平安
+                    "000333": "美的集团",   # 添加美的集团
+                    "600036": "招商银行",   # 添加招商银行
+                    "601166": "兴业银行",   # 添加兴业银行
+                    "600016": "民生银行",   # 添加民生银行
+                    "301155": "海力风电",   # 添加海力风电
+                    # 可以添加更多映射
+                }
+                if ticker in stock_code_map:
+                    stock_name = stock_code_map[ticker]
+                    logger.info(f"✓ 从预定义映射获取股票名称: {stock_name}")
                 else:
-                    stock_name = str(name_value)
-            logger.info(f"✓ 获取到股票名称: {stock_name}")
-        except Exception as e_info:
-            logger.warning(f"通过API获取股票信息失败: {e_info}")
-            
-            # 尝试从常见股票代码映射中获取
-            stock_code_map = {
-                "000001": "平安银行",
-                "600000": "浦发银行",
-                "601398": "工商银行",
-                "601988": "中国银行",
-                # 可以添加更多映射
-            }
-            if ticker in stock_code_map:
-                stock_name = stock_code_map[ticker]
-                logger.info(f"✓ 从预定义映射获取股票名称: {stock_name}")
-    except Exception as e:
-        logger.warning(f"获取股票名称失败: {e}，将使用默认名称: {stock_name}")
+                    # 尝试获取所有A股股票信息
+                    try:
+                        all_stocks = ak.stock_info_a_code_name()
+                        stock_match = all_stocks[all_stocks['code'] == ticker]
+                        if not stock_match.empty:
+                            stock_name = stock_match.iloc[0]['name']
+                            logger.info(f"✓ 从A股列表获取股票名称: {stock_name}")
+                        else:
+                            stock_name = default_stock_name
+                            logger.warning(f"未找到股票代码 {ticker} 对应的名称，使用默认名称")
+                    except Exception as e_all:
+                        logger.warning(f"获取A股列表失败: {e_all}，使用默认名称")
+                        stock_name = default_stock_name
+        except Exception as e:
+            logger.warning(f"所有获取股票名称的方法均失败: {e}，使用默认名称: {default_stock_name}")
+            stock_name = default_stock_name
+    
+    logger.info(f"最终使用的股票名称: {stock_name}")
     
     # 准备提示词
     prompt = f"""
@@ -342,6 +450,7 @@ def report_analyzer_agent(state: AgentState) -> AgentState:
     8. 对于估值分析部分，需要解释DCF和所有者收益分析方法的区别
     9. 标题必须是"# {ticker} {stock_name}投资分析报告"，不要使用其他标题
     10. 在报告结尾总结关键投资要点和风险提示
+    11. 最终投资决策必须在"买入"、"观望"、"抛售"三者中选择其一，并在报告结尾明确给出。
     
     分析目标股票: {ticker} {stock_name}
     最终投资决策: {final_action} {'，置信度 ' + str(int(confidence * 100)) + '%' if confidence is not None else ''}

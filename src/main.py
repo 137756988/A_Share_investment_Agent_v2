@@ -28,7 +28,7 @@ from src.agents.report_analyzer import report_analyzer_agent  # 添加财务报�
 from src.agents.knowledge_query import knowledge_query_agent  # 添加金融知识查询助手
 
 # --- 添加意图识别工具 ---
-from src.utils.intent_detector import detect_intent
+from src.utils.intent_detector import detect_intent, extract_stock_info
 
 # --- Logging and Backend Imports ---
 from src.utils.output_logger import OutputLogger
@@ -198,6 +198,18 @@ def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, por
         print(f"--- API State updated with Run ID: {run_id} ---")
     except Exception as e:
         print(f"Note: Could not update API state: {str(e)}")
+    
+    # 获取股票名称
+    stock_name = ""
+    try:
+        # 先尝试获取股票信息
+        stock_df = ak.stock_info_a_code_name()
+        stock_row = stock_df[stock_df['code'] == ticker]
+        if not stock_row.empty:
+            stock_name = stock_row.iloc[0]['name']
+            print(f"✓ 获取到股票名称: {stock_name}")
+    except Exception as e:
+        print(f"获取股票名称时出错: {str(e)}")
 
     initial_state = {
         "messages": [
@@ -219,6 +231,10 @@ def run_hedge_fund(run_id: str, ticker: str, start_date: str, end_date: str, por
             "generate_report": generate_report,  # 是否生成中文解析报告
         }
     }
+    
+    # 添加股票名称到state
+    if stock_name:
+        initial_state["data"]["stock_name"] = stock_name
 
     # 使用backend的workflow_run上下文管理器（如果可用）
     try:
@@ -383,25 +399,50 @@ def process_user_query(run_id: str, query: str, show_reasoning: bool = False) ->
         print("\n📊 执行股票分析流程")
         # 提取可能的股票代码或名称
         try:
-            # 尝试从查询中提取股票代码或名称
-            print("🔍 尝试从查询中识别股票...")
+            # 使用extract_stock_info函数从意图识别结果中提取股票信息
+            print("🔍 从意图识别结果中提取股票信息...")
+            stock_code, stock_name, has_stock_info = extract_stock_info(intent_result)
             
-            # 如果有槽位信息，尝试从中提取股票信息
-            stock_name = None
-            if "slots" in intent_result and intent_result["slots"]:
-                if "stock_name" in intent_result["slots"]:
-                    stock_name = intent_result["slots"]["stock_name"]
-                    print(f"✓ 从槽位中识别到股票: {stock_name}")
-            
-            # 如果没有从槽位中获取到，尝试从整个查询中提取
-            if not stock_name:
-                # 这里简化处理，直接使用整个查询
-                stock_name = query
-                print(f"⚠️ 无法从槽位中识别股票，将使用整个查询文本")
-            
-            # 解析股票代码
-            ticker = resolve_stock_input(stock_name, non_interactive=True)
-            print(f"✅ 识别到股票代码: {ticker}")
+            # 决定使用哪种方式获取股票代码
+            if has_stock_info:
+                if stock_code:
+                    print(f"✅ 从槽位中直接提取到股票代码: {stock_code}")
+                    ticker = stock_code
+                elif stock_name:
+                    print(f"✅ 从槽位中提取到股票名称: {stock_name}")
+                    # 解析股票代码
+                    ticker = resolve_stock_input(stock_name, non_interactive=True)
+                    print(f"✓ 根据股票名称查找到股票代码: {ticker}")
+                    # 保存原始股票名称供后续使用
+                    stock_name_for_report = stock_name
+            else:
+                # 没有从槽位中找到股票信息，尝试从整个查询中查找
+                print("⚠️ 未从槽位中识别到股票信息，尝试从整个查询中分析...")
+                # 尝试判断查询文本中是否包含股票名称或代码
+                try:
+                    stock_df = ak.stock_info_a_code_name()
+                    # 首先尝试找股票名称
+                    for _, row in stock_df.iterrows():
+                        if row['name'] in query:
+                            stock_name_for_report = row['name']
+                            ticker = row['code']
+                            print(f"✓ 从查询文本中找到股票名称: {stock_name_for_report}, 对应代码: {ticker}")
+                            break
+                    else:
+                        # 如果没找到名称，再尝试解析
+                        ticker = resolve_stock_input(query, non_interactive=True)
+                        # 尝试获取解析出的代码对应的名称
+                        stock_row = stock_df[stock_df['code'] == ticker]
+                        if not stock_row.empty:
+                            stock_name_for_report = stock_row.iloc[0]['name']
+                        else:
+                            stock_name_for_report = ""
+                        print(f"✓ 从查询文本中解析出股票代码: {ticker}, 对应名称: {stock_name_for_report}")
+                except Exception as e:
+                    print(f"❌ 从查询文本分析股票信息时出错: {e}")
+                    ticker = resolve_stock_input(query, non_interactive=True)
+                    stock_name_for_report = ""
+                    print(f"✓ 从查询文本中解析出股票代码: {ticker}")
             
             # 设置当前日期和日期范围
             current_date = datetime.now()
@@ -411,6 +452,9 @@ def process_user_query(run_id: str, query: str, show_reasoning: bool = False) ->
             
             # 更新状态
             initial_state["data"]["ticker"] = ticker
+            # 传递股票名称到state
+            if stock_name_for_report:
+                initial_state["data"]["stock_name"] = stock_name_for_report
             initial_state["data"]["start_date"] = start_date.strftime('%Y-%m-%d')
             initial_state["data"]["end_date"] = end_date.strftime('%Y-%m-%d')
             initial_state["data"]["portfolio"] = {
@@ -421,6 +465,7 @@ def process_user_query(run_id: str, query: str, show_reasoning: bool = False) ->
             initial_state["metadata"]["generate_report"] = True
             
             print(f"\n🚀 开始执行股票分析工作流")
+            print(f"🔖 股票代码: {ticker}")
             print(f"📅 分析时间范围: {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
             print(f"⏳ 分析进行中，这可能需要几分钟时间...")
             

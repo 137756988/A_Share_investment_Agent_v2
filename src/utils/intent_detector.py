@@ -7,7 +7,8 @@
 import os
 import sys
 import logging
-from typing import Dict, Any, Optional
+import re
+from typing import Dict, Any, Optional, Tuple
 
 # 设置日志记录
 logger = logging.getLogger("intent_detector")
@@ -116,3 +117,49 @@ def detect_intent(text: str) -> Dict[str, Any]:
     result = predict_intent(detector, text)
     logger.info(f"意图识别结果: {result['intent']}")
     return result
+
+
+def extract_stock_info(result: Dict[str, Any]) -> Tuple[str, str, bool]:
+    """
+    从意图识别结果中提取股票代码或名称
+    
+    Args:
+        result: 意图识别结果字典
+        
+    Returns:
+        Tuple[str, str, bool]: (stock_code, stock_name, has_stock_info)
+        - stock_code: 股票代码（如果有）
+        - stock_name: 股票名称（如果有）
+        - has_stock_info: 是否找到股票信息
+    """
+    stock_code = ""
+    stock_name = ""
+    has_stock_info = False
+    
+    # 只有当意图是股票分析时才提取股票信息
+    if result.get("intent") != "STOCK_ANALYSIS":
+        logger.info("非股票分析意图，不提取股票信息")
+        return stock_code, stock_name, has_stock_info
+    
+    # 检查是否有槽位信息
+    if "slots" not in result:
+        logger.warning("意图为股票分析但未找到槽位信息")
+        return stock_code, stock_name, has_stock_info
+    
+    slots = result["slots"]
+    
+    # 提取股票代码
+    if "stock_code" in slots and slots["stock_code"]:
+        # 清理股票代码（去除##等噪音）
+        raw_code = slots["stock_code"][0] if isinstance(slots["stock_code"], list) else slots["stock_code"]
+        stock_code = re.sub(r'[^0-9a-zA-Z]', '', raw_code)
+        logger.info(f"从槽位中提取股票代码: {stock_code}")
+        has_stock_info = True
+    
+    # 提取股票名称
+    if "stock_name" in slots and slots["stock_name"]:
+        stock_name = slots["stock_name"][0] if isinstance(slots["stock_name"], list) else slots["stock_name"]
+        logger.info(f"从槽位中提取股票名称: {stock_name}")
+        has_stock_info = True
+    
+    return stock_code, stock_name, has_stock_info
