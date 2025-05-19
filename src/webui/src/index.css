@@ -1,0 +1,77 @@
+body {
+  background: #f0f2f5;
+  font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* 基础元素样式 */
+.ant-layout-header {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.ant-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s;
+}
+
+.ant-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  transition: all 0.3s;
+}
+
+.ant-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+/* 标签样式 */
+.ant-tag {
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.ant-tag:hover {
+  transform: scale(1.05);
+}
+
+/* 结果容器样式 */
+.result-container {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* 图标动画 */
+.ant-spin-dot-item {
+  background-color: #1890ff;
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .ant-layout-content {
+    padding: 16px !important;
+  }
+}
+
+/* 鼠标悬停效果 */
+.hover-scale {
+  transition: all 0.3s;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+} 

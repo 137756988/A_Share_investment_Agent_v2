@@ -266,10 +266,16 @@ def log_llm_interaction(state):
 # 启动API服务器的函数
 def start_api_server(host="0.0.0.0", port=8000, stop_event=None):
     """在独立线程中启动API服务器"""
+    # 获取应用程序实例
+    app_instance = get_app()
+    if app_instance is None:
+        logger.error("无法获取FastAPI应用实例，API服务无法启动")
+        return
+
     if stop_event:
         # 使用支持优雅关闭的配置
         config = uvicorn.Config(
-            app=app,
+            app=app_instance,
             host=host,
             port=port,
             log_config=None,
@@ -301,4 +307,4 @@ def start_api_server(host="0.0.0.0", port=8000, stop_event=None):
             logger.info("服务器已关闭")
     else:
         # 无优雅关闭的标准启动模式
-        uvicorn.run(app, host=host, port=port, log_config=None)
+        uvicorn.run(app_instance, host=host, port=port, log_config=None)
