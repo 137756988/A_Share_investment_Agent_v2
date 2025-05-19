@@ -23,7 +23,7 @@
 
 ### 核心理念：多智能体协同与LLM增强决策
 
-系统通过模拟不同角色的研究员（多头、空头）和分析师，进行信息收集、分析、辩论，最终形成投资决策。最新的“辩论室智能增强”机制引入LLM作为独立第三方，进一步提升决策的客观性和全面性。
+系统通过模拟不同角色的研究员（多头、空头）和分析师，进行信息收集、分析、辩论，最终形成投资决策。最新的"辩论室智能增强"机制引入LLM作为独立第三方，进一步提升决策的客观性和全面性。
 
 <div align="center">
 <table>
@@ -48,29 +48,107 @@
 
 ## 系统架构
 
-![System Architecture V2](src/data/img/structure_v3.png)
+```mermaid
+graph TD
+    subgraph "数据获取层"
+        MD[市场数据分析师] --> |股票代码| DATA[数据采集]
+        DATA --> STOCK[股票数据]
+        DATA --> NEWS[新闻数据]
+        DATA --> FINANCE[财务数据]
+    end
+
+    subgraph "分析层"
+        STOCK --> TA[技术分析师]
+        FINANCE --> FA[基本面分析师]
+        NEWS --> SA[情感分析师]
+        FINANCE --> VA[估值分析师]
+        STOCK --> RB[多头研究员]
+        STOCK --> RE[空头研究员]
+        FINANCE --> MA[宏观分析师]
+        
+        TA --> |技术信号| DR[辩论室]
+        FA --> |基本面信号| DR
+        SA --> |情感信号| DR
+        VA --> |估值信号| DR
+        RB --> |多头观点| DR
+        RE --> |空头观点| DR
+        MA --> |宏观观点| DR
+        
+        DR --> |辩论结果| INTENT[意图识别引擎]
+    end
+
+    subgraph "决策层"
+        INTENT --> |用户意图| RM[风险管理]
+        RM --> |风险评估| PM[组合管理]
+        PM --> |买入/卖出/持有| TD[交易决策]
+    end
+
+    subgraph "接口层"
+        TD --> API[API服务]
+        API --> REPORT[分析报告]
+        API --> QA[即时问答]
+        API --> WEB[Web前端]
+    end
+
+    subgraph "硅基流动集成"
+        INTENT <--> |查询增强| SF[硅基流动API]
+        SF <--> |智能问答| QA
+    end
+```
 
 新版本的架构做出了以下改进：
 
-1.  引入了多头研究员(Researcher Bull)和空头研究员(Researcher Bear)，让系统能够从不同角度分析市场
-2.  增加了辩论室(Debate Room)环节，通过多空双方的辩论来达成更全面的决策
-3.  优化了数据流向，使决策过程更加系统化和完整
+1. 引入了多头研究员(Researcher Bull)和空头研究员(Researcher Bear)，让系统能够从不同角度分析市场
+2. 增加了辩论室(Debate Room)环节，通过多空双方的辩论来达成更全面的决策
+3. 增加了宏观分析师(Macro Analyst)，提供宏观经济层面的分析视角
+4. 新增了意图识别引擎，能够更准确地理解和响应用户查询意图
+5. 完善了API服务和Web前端接口，支持更灵活的交互方式
+6. 增加了硅基流动API集成，增强了系统的智能问答能力
 
 另外，优化了终端输出，减少了不必要的详细数据显示，使输出更加清晰易读。
 
 ## 最新功能：
 
-### 2025.04.27 宏观分析师
+### 2023.06.15 硅基流动API集成
 
-### 2025.03.27 辩论室智能增强
+我们集成了硅基流动(SiliconFlow)的API服务，实现了更智能的问答和分析能力：
 
-我们最新升级了辩论室(Debate Room)模块的决策机制：
+1. **行业知识增强**：利用硅基流动丰富的金融知识提升回答质量
+2. **智能问答引擎**：支持复杂的多轮对话和专业金融问题解答
+3. **上下文感知**：能够理解用户问题的上下文，提供连贯一致的回答
+4. **安全与隐私**：确保用户数据安全和隐私保护
 
-1.  **LLM 第三方分析**：引入大型语言模型作为独立的第三方分析师，对多空观点进行客观评估
-2.  **混合置信度计算**：将传统的多空置信度差异与 LLM 评分进行加权融合，形成更全面的决策依据
-3.  **增强的辩论机制**：系统现在能够自动汇总所有研究员的观点，生成结构化分析，并整合进最终决策
+详细配置和使用方法请参阅：[硅基流动集成文档](SILICONFLOW_INTEGRATION.md)
 
-这一改进使决策过程更加平衡客观，特别适合在市场信息复杂、多方观点存在分歧的情况下提供更可靠的投资建议。未来我们将持续优化这一机制，进一步提升决策质量。
+### 2023.05.20 意图识别引擎
+
+系统新增了强大的意图识别功能，能够智能理解用户查询的真实意图：
+
+1. **多级意图识别**：精确分类用户查询意图，包括投资建议、市场分析、公司研究等
+2. **个性化响应**：根据不同意图提供定制化的分析报告和建议
+3. **查询优化**：自动优化和重构用户查询，提高分析准确性
+4. **学习能力**：随着使用不断优化识别能力，提高响应质量
+
+详细说明请参考：[意图识别文档](INTENT_README.md)
+
+### 2023.04.27 宏观分析师
+
+新增宏观分析师角色，提供更全面的市场环境分析：
+
+1. **宏观经济指标分析**：GDP、CPI、PMI等宏观指标解读
+2. **政策环境评估**：货币政策、财政政策对市场的影响
+3. **行业趋势分析**：行业发展趋势和政策导向分析
+4. **系统性风险评估**：识别和评估可能的系统性风险因素
+
+### 2023.03.27 辩论室智能增强
+
+我们升级了辩论室(Debate Room)模块的决策机制：
+
+1. **LLM 第三方分析**：引入大型语言模型作为独立的第三方分析师，对多空观点进行客观评估
+2. **混合置信度计算**：将传统的多空置信度差异与 LLM 评分进行加权融合，形成更全面的决策依据
+3. **增强的辩论机制**：系统现在能够自动汇总所有研究员的观点，生成结构化分析，并整合进最终决策
+
+这一改进使决策过程更加平衡客观，特别适合在市场信息复杂、多方观点存在分歧的情况下提供更可靠的投资建议。
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" width="100%">
@@ -122,13 +200,16 @@ poetry install
 # Create .env file for your API keys
 cp .env.example .env
 ```
-然后，您可以获取您的 Gemini API 密钥：[Google AI Studio](https://aistudio.google.com/)
 
 您可以通过以下两种方式设置环境变量:
 
 **a. 直接修改 `.env` 文件 (推荐)**
 打开项目根目录下的 `.env` 文件, 填入您的 API key:
 ```env
+# 硅基流动API配置
+SILICONFLOW_API_KEY=your-siliconflow-api-key
+SILICONFLOW_MODEL=your-siliconflow-model
+
 # Gemini API 配置
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-1.5-flash
@@ -138,12 +219,16 @@ OPENAI_COMPATIBLE_API_KEY=your-openai-compatible-api-key
 OPENAI_COMPATIBLE_BASE_URL=https://your-api-endpoint.com/v1
 OPENAI_COMPATIBLE_MODEL=your-model-name
 ```
-**注意:** 系统会优先使用 OpenAI Compatible API（如果配置了），否则会使用 Gemini API。
+**注意:** 系统会优先使用硅基流动API（如果配置了），其次是OpenAI Compatible API，最后是Gemini API。
 
 **b. 通过命令行设置**
 
 **Unix/macOS:**
 ```bash
+# 硅基流动API配置
+export SILICONFLOW_API_KEY='your-siliconflow-api-key'
+export SILICONFLOW_MODEL='your-siliconflow-model'
+
 # Gemini API 配置
 export GEMINI_API_KEY='your-gemini-api-key'
 export GEMINI_MODEL='gemini-1.5-flash'
@@ -156,6 +241,10 @@ export OPENAI_COMPATIBLE_MODEL='your-model-name'
 
 **Windows PowerShell:**
 ```powershell
+# 硅基流动API配置
+$env:SILICONFLOW_API_KEY='your-siliconflow-api-key'
+$env:SILICONFLOW_MODEL='your-siliconflow-model'
+
 # Gemini API 配置
 $env:GEMINI_API_KEY='your-gemini-api-key'
 $env:GEMINI_MODEL='gemini-1.5-flash'
@@ -176,9 +265,23 @@ $env:OPENAI_COMPATIBLE_MODEL='your-model-name'
 
 系统支持多种运行方式：
 
-### 1. 命令行分析模式
+### 1. Web界面交互模式
 
-这是直接与系统交互进行股票分析的主要方式。
+这是最直观友好的使用方式，提供图形化界面进行分析和查询。
+
+```bash
+# 启动后端API服务和前端Web界面
+poetry run python run_with_backend.py
+```
+
+启动后，浏览器会自动打开 `http://localhost:8000`，您可以在Web界面上：
+- 输入自然语言查询（如"分析海力风电的投资价值"）
+- 查看分析报告列表和下载报告
+- 使用即时问答功能获取快速回复
+
+### 2. 命令行分析模式
+
+这是直接与系统交互进行股票分析的命令行方式。
 
 **基本运行 (只显示关键决策信息):**
 ```bash
@@ -198,24 +301,41 @@ poetry run python src/main.py --ticker 000000 --show-reasoning #修改成你想�
 poetry run python src/main.py --ticker 301155 --show-reasoning
 ```
 
-### 2. 后端 API 服务模式
+### 3. 意图识别查询模式
+
+使用此模式可以利用系统的意图识别能力，进行更自然的查询。
+
+```bash
+# 使用自然语言进行查询
+poetry run python test_intent_query.py "海力风电今年的投资价值如何？"
+```
+
+系统会自动识别查询意图，并提供针对性的回答。您可以尝试各种复杂查询，如：
+- "比较中国平安和平安银行的投资价值"
+- "分析新能源行业未来半年的发展趋势"
+- "我有100万资金，建议如何配置A股投资组合？"
+
+### 4. 后端 API 服务模式
 
 此模式会启动一个 FastAPI 后端服务，允许通过 API 与系统交互，适合希望基于此后端开发自定义前端界面的用户。
 
 ```bash
-# 启动API服务
-poetry run python run_with_backend.py
+# 仅启动API服务
+poetry run python -m backend.main
 ```
 启动后，可以通过浏览器访问 `http://localhost:8000/docs` 使用交互式 API 界面 (Swagger UI)。
 
 **常用 API 端点包括：**
 
 * **开始新的分析**: `POST /analysis/start` (请求体中提供股票代码、初始资金等)
+* **意图识别查询**: `POST /intent/query` (提交自然语言查询进行意图分析)
 * **查看当前工作流状态**: `GET /api/workflow/status` (获取当前运行 ID 和活跃 Agent 状态)
 * **列出历史运行**: `GET /runs/` (获取已完成运行列表)
 * **查看特定运行的流程图**: `GET /runs/{run_id}/flow`
 * **查看特定 Agent 的详细执行日志**: `GET /runs/{run_id}/agents/{agent_name}`
 * **查看 LLM 交互日志**: `GET /logs/` (具体路径可能需根据实现确认)
+* **获取分析报告列表**: `GET /reports/` (获取所有生成的分析报告)
+* **下载分析报告**: `GET /reports/{ticker}/download` (下载特定股票的分析报告)
 
 **API 服务模式的优势：**
 * 分析任务在后台异步执行。
@@ -231,6 +351,8 @@ poetry run python run_with_backend.py
 * `--show-reasoning`: 显示分析推理过程 (可选, 默认为 `false`)
 * `--initial-capital`: 初始现金金额 (可选, 默认为 `100,000`)
 * `--num-of-news`: 情绪分析使用的新闻数量 (可选, 默认为 `5`)
+* `--use-intent`: 使用意图识别引擎 (可选, 默认为 `true`)
+* `--use-siliconflow`: 优先使用硅基流动API (可选, 默认为 `false`)
 
 ### 命令行模式输出说明
 
@@ -330,71 +452,93 @@ Final Result:
 ## 📂 项目结构 (Project Structure)
 
 ```
-A_Share_investment_Agent/
+A_Share_investment_Agent_V2/
 ├── backend/                     # 后端 API 和服务
 │   ├── dependencies.py          # 依赖注入 (如 LogStorage)
 │   ├── main.py                  # FastAPI 应用实例
 │   ├── models/                  # API 请求/响应模型 (Pydantic)
-│   │   ├── analysis.py          # /analysis/ 相关路由
-│   │   ├── api_runs.py          # /api/runs/ 相关路由 (基于 api_state)
-│   │   ├── logs.py              # /logs/ 相关路由
-│   │   ├── runs.py              # /runs/ 相关路由 (基于 BaseLogStorage)
-│   │   └── workflow.py          # /api/workflow/ 相关路由
-│   ├── schemas.py               # 内部数据结构/日志模型 (Pydantic)
+│   │   ├── analysis.py          # 分析相关模型
+│   │   ├── api_runs.py          # 运行状态相关模型
+│   │   ├── logs.py              # 日志相关模型
+│   │   ├── reports.py           # 报告相关模型
+│   │   ├── runs.py              # 运行历史相关模型
+│   │   └── workflow.py          # 工作流相关模型
+│   ├── schemas.py               # 内部数据结构/日志模型
 │   ├── services/                # 业务逻辑服务
-│   │   └── analysis.py          # 股票分析服务
-│   ├── state.py                 # 内存状态管理 (api_state)
+│   │   ├── analysis.py          # 股票分析服务
+│   │   ├── intent.py            # 意图识别服务
+│   │   └── report.py            # 报告生成服务
+│   ├── state.py                 # 内存状态管理
 │   ├── storage/                 # 日志存储实现
-│   │   ├── base.py              # BaseLogStorage 接口定义
-│   │   └── memory.py            # InMemoryLogStorage 实现
+│   │   ├── base.py              # 基础存储接口
+│   │   └── memory.py            # 内存存储实现
 │   └── utils/                   # 后端工具函数
 │       ├── api_utils.py         # API 相关工具
-│       └── context_managers.py  # 上下文管理器 (如 workflow_run)
-├── src/                         # Agent 核心逻辑和工具
-│   ├── agents/                  # Agent 定义和工作流
+│       └── context_managers.py  # 上下文管理器
+├── logs/                        # 日志文件目录
+├── result/                      # 分析结果和报告
+├── src/                         # 核心源代码
+│   ├── agents/                  # Agent 定义和实现
 │   │   ├── __init__.py
-│   │   ├── debate_room.py
-│   │   ├── fundamentals.py
-│   │   ├── macro_analyst.py       # 宏观分析师Agent
-│   │   ├── market_data.py
-│   │   ├── portfolio_manager.py
-│   │   ├── researcher_bear.py
-│   │   ├── researcher_bull.py
-│   │   ├── risk_manager.py
-│   │   ├── sentiment.py
-│   │   ├── state.py
-│   │   ├── technicals.py
-│   │   └── valuation.py
-│   ├── data/                   # 数据存储目录 (本地缓存等)
-│   │   ├── img/                # 项目图片
-│   │   ├── sentiment_cache.json  # 情感分析结果缓存
-│   │   ├── macro_analysis_cache.json  # 宏观分析结果缓存
-│   │   └── stock_news/         # 股票新闻数据
-│   ├── tools/                  # 工具和功能模块 (LLM, 数据获取)
+│   │   ├── debate_room.py       # 辩论室
+│   │   ├── fundamentals.py      # 基本面分析师
+│   │   ├── intent_engine.py     # 意图识别引擎
+│   │   ├── macro_analyst.py     # 宏观分析师
+│   │   ├── market_data.py       # 市场数据分析师
+│   │   ├── portfolio_manager.py # 投资组合管理
+│   │   ├── researcher_bear.py   # 空头研究员
+│   │   ├── researcher_bull.py   # 多头研究员
+│   │   ├── risk_manager.py      # 风险管理
+│   │   ├── sentiment.py         # 情感分析师
+│   │   ├── state.py             # Agent状态管理
+│   │   ├── technicals.py        # 技术分析师
+│   │   └── valuation.py         # 估值分析师
+│   ├── data/                    # 数据存储目录
+│   │   ├── img/                 # 项目图片资源
+│   │   ├── sentiment_cache.json # 情感分析缓存
+│   │   ├── macro_analysis_cache.json # 宏观分析缓存
+│   │   └── stock_news/          # 股票新闻数据
+│   ├── tools/                   # 工具和功能模块
 │   │   ├── __init__.py
-│   │   ├── api.py
-│   │   ├── data_analyzer.py
-│   │   ├── news_crawler.py
-│   │   └── openrouter_config.py
-│   ├── utils/                  # 通用工具函数 (日志, LLM客户端, 序列化)
+│   │   ├── api.py               # API工具
+│   │   ├── data_analyzer.py     # 数据分析工具
+│   │   ├── intent_analyzer.py   # 意图分析工具
+│   │   ├── news_crawler.py      # 新闻爬取工具
+│   │   ├── siliconflow_api.py   # 硅基流动API集成
+│   │   └── report_generator.py  # 报告生成工具
+│   ├── utils/                   # 通用工具函数
 │   │   ├── __init__.py
-│   │   ├── api_utils.py        # Agent 共享的API工具 (逐步迁移至 backend)
-│   │   ├── llm_clients.py
-│   │   ├── llm_interaction_logger.py
-│   │   ├── logging_config.py
-│   │   ├── output_logger.py
-│   │   ├── serialization.py
-│   │   ├── structured_terminal.py  # 结构化终端输出
-│   │   └── summary_report.py    # 汇总报告生成
-│   ├── backtester.py          # 回测系统 (可能需要检查状态)
-│   └── main.py                # Agent 工作流定义和命令行入口
-├── logs/                      # 日志文件目录 (主要由 OutputLogger 生成)
-├── .env                       # 环境变量配置
-├── .env.example              # 环境变量示例
-├── poetry.lock               # Poetry依赖锁定文件
-├── pyproject.toml            # Poetry项目配置
-├── run_with_backend.py       # 启动后端并可选执行分析的脚本
-└── README.md                 # 项目文档
+│   │   ├── api_utils.py         # API工具
+│   │   ├── llm_clients.py       # LLM客户端
+│   │   ├── llm_interaction_logger.py # LLM交互日志
+│   │   ├── logging_config.py    # 日志配置
+│   │   ├── output_logger.py     # 输出日志
+│   │   ├── serialization.py     # 序列化工具
+│   │   └── summary_report.py    # 摘要报告生成
+│   ├── webui/                   # Web前端界面
+│   │   ├── public/              # 静态资源
+│   │   ├── src/                 # 前端源代码
+│   │   │   ├── api.js           # API封装
+│   │   │   ├── App.jsx          # 主应用组件
+│   │   │   ├── components/      # UI组件
+│   │   │   └── index.js         # 入口文件
+│   │   ├── package.json         # 依赖配置
+│   │   └── vite.config.js       # 构建配置
+│   ├── backtester.py            # 回测系统
+│   └── main.py                  # 主入口文件
+├── test_intent_query.py         # 意图查询测试脚本
+├── test_report_analyzer.py      # 报告分析测试脚本
+├── test_siliconflow.py          # 硅基流动测试脚本
+├── search_stock.py              # 股票搜索工具
+├── run_with_backend.py          # 后端服务启动脚本
+├── run_report_analyzer.py       # 报告分析工具
+├── .env                         # 环境变量配置
+├── .env.example                 # 环境变量示例
+├── INTENT_README.md             # 意图识别说明
+├── SILICONFLOW_INTEGRATION.md   # 硅基流动集成说明
+├── poetry.lock                  # Poetry依赖锁定文件
+├── pyproject.toml               # Poetry项目配置
+└── README.md                    # 项目文档
 ```
 
 <div align="center">
@@ -653,50 +797,91 @@ Market Data Analyst → [Technical/Fundamentals/Sentiment/Valuation Analyst & Re
 
 ### 系统特点
 
-1.  **多 LLM 支持**
+1.  **多智能体协作**
+    * 14种专业角色智能体协同工作
+    * 多头和空头视角平衡
+    * 辩论室机制促进决策质量
+    * 宏观分析师提供大局观
+
+2.  **多 LLM 支持**
+    * 支持硅基流动(SiliconFlow)API
     * 支持 Google Gemini API
-    * 支持任何兼容 OpenAI API 格式的 LLM 服务（如华为云方舟、OpenRouter 等）
+    * 支持任何兼容 OpenAI API 格式的 LLM 服务
     * 智能切换功能：自动选择可用的 LLM 服务
 
-2.  **模块化设计**
+3.  **意图识别引擎**
+    * 精准理解用户查询意图
+    * 支持复杂的自然语言查询
+    * 个性化的响应生成
+    * 持续学习和优化能力
+
+4.  **Web前端界面**
+    * 现代化React+Ant Design界面
+    * 即时问答和分析报告功能
+    * 响应式设计，适配各种设备
+    * 友好的用户体验
+
+5.  **模块化设计**
     * 每个代理都是独立的模块
     * 易于维护和升级
     * 可以单独测试和优化
+    * 前后端分离架构
 
-3.  **可扩展性**
+6.  **可扩展性**
     * 可以轻松添加新的分析师或研究员角色
     * 支持添加新的数据源
     * 可以扩展决策策略和辩论机制
+    * 插件化架构设计
 
-4.  **风险管理**
+7.  **风险管理**
     * 多层次的风险控制
     * 实时风险评估
-    * 自动止损机制 (规划中或部分实现)
+    * 智能头寸管理
+    * 自动止损机制
 
-5.  **智能决策与解释性**
+8.  **智能决策与解释性**
     * 基于多维度分析和多方观点博弈
     * 考虑多个市场因素
     * 动态调整策略
-    * 通过 `--show-reasoning` 和辩论室机制增强决策过程的透明度和可解释性
+    * 决策过程透明可解释
 
 ### 未来展望
 
-1.  **数据源扩展**
+1.  **意图识别增强**
+    * 开发更复杂的多级意图识别模型
+    * 增加个性化意图理解能力
+    * 支持更多领域特定查询
+    * 增强长上下文处理能力
+
+2.  **硅基流动集成深化**
+    * 对接更多硅基流动专业模型
+    * 利用硅基流动知识图谱增强分析
+    * 开发联合推理能力
+    * 探索多模态分析可能性
+
+3.  **数据源扩展**
     * 添加更多 A 股数据源 (如财报、公告的结构化数据)
     * 接入更多财经数据平台
     * 增加社交媒体情绪数据、行业研报等另类数据
     * 扩展到港股、美股市场
 
-2.  **功能增强**
+4.  **功能增强**
     * 添加更多复杂技术指标和量化策略因子
     * 实现更完善和自动化的回测系统，支持参数优化
     * 支持多股票组合管理和动态调仓
     * 增强 LLM 在策略生成、代码解释、市场总结等方面的应用
 
-3.  **性能优化**
+5.  **Web前端优化**
+    * 开发更丰富的数据可视化组件
+    * 增加用户自定义分析流程
+    * 支持移动端应用
+    * 增强用户交互体验
+
+6.  **性能优化**
     * 提高数据处理效率，优化 Agent 间通信
     * 优化决策算法和 LLM 调用效率
     * 增加并行处理能力，支持更大规模的分析任务
+    * 优化前端加载性能和响应速度
 
 ### 情感分析功能 (Sentiment Agent)
 
@@ -772,3 +957,35 @@ This project is dual-licensed:
 <div align="center">
 <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12,15,20,24&section=footer&height=100&animation=fadeIn" />
 </div>
+
+## 💻 前端界面效果展示
+
+系统提供现代化的Web前端界面，使用React和Ant Design开发，具有以下特点：
+
+![前端界面效果图](src/data/img/frontend.png)
+
+### 主要功能区域：
+
+1. **查询输入区**
+   - 支持自然语言输入查询
+   - 智能理解用户意图
+   - 提供热门查询建议
+
+2. **即时问答区**
+   - 显示AI分析结果
+   - 提供详细的投资建议
+   - 支持复杂金融问题解答
+
+3. **报告列表区**
+   - 查看历史分析报告
+   - 下载完整分析报告
+   - 方便后续参考和对比
+
+### 交互特点：
+
+- **响应式设计**：适配不同尺寸的设备
+- **实时反馈**：分析过程中提供加载状态
+- **用户友好**：直观的界面布局和操作流程
+- **数据安全**：本地处理敏感数据，保护隐私
+
+通过Web界面，用户可以便捷地进行股票分析、查询市场情报、获取投资建议，无需复杂的命令行操作。
